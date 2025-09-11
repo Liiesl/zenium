@@ -1,0 +1,82 @@
+/* renderer/settingsModal/settingsModal.css */
+#settings-modal-content {
+    display: flex;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+#settings-sidebar {
+    width: 200px;
+    background-color: var(--background-color);
+    padding: 20px;
+    border-right: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+#settings-sidebar h3 {
+    margin-top: 0;
+    padding-left: 10px;
+}
+
+#settings-sidebar ul {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0 0 0;
+}
+
+.settings-category {
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.settings-category:hover {
+    background-color: var(--hover-color);
+}
+
+.settings-category.active {
+    background-color: var(--active-tab-color);
+    font-weight: bold;
+}
+
+#settings-main {
+    flex-grow: 1;
+    padding: 20px 30px;
+    overflow-y: auto;
+}
+
+.settings-page {
+    display: none;
+}
+
+.settings-page.active {
+    display: block;
+}
+
+.setting-item {
+    margin-bottom: 30px;
+}
+.setting-item h4 {
+    margin: 0 0 5px 0;
+    font-size: 16px;
+}
+.setting-item p {
+    margin-top: 0;
+    color: var(--subtle-text-color);
+    font-size: 13px;
+}
+
+.theme-options {
+    margin-top: 15px;
+}
+
+.theme-options label {
+    margin-right: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}

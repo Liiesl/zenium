@@ -1,0 +1,41 @@
+body {
+    margin: 0;
+    overflow: hidden;
+}
+
+.loader {
+    width: 100%;
+    height: 5px;
+    background-color: #f3f3f3;
+    position: relative;
+    overflow: hidden;
+}
+
+.loader::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: 0%;
+    height: 100%;
+    background-color: #3498db;
+    opacity: 1;
+    transition: width 0.3s ease-out, opacity 0.3s ease-out 0.2s; /* Delay opacity transition */
+}
+
+.loader.loading::after {
+    animation: loading-progress 15s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+}
+
+.loader.finished::after {
+    width: 100%;
+    opacity: 0;
+}
+
+@keyframes loading-progress {
+    from {
+        width: 0%;
+    }
+    to {
+        width: 90%;
+    }
+}

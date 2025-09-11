@@ -1,0 +1,287 @@
+/* styles.css */
+:root {
+    --background-color: #F8F7FA;
+    --sidebar-color: #FFFFFF;
+    --active-tab-color: #EAE9EC;
+    --hover-color: #F2F1F4;
+    --border-color: #E1E0E3;
+    --text-color: #333333;
+    --subtle-text-color: #888888;
+    --accent-color: #007AFF; /* A color for interaction */
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --background-color: #1E1E1E;
+        --sidebar-color: #525252;
+        --active-tab-color: #2D2D2D;
+        --hover-color: #3E3E3E;
+        --border-color: #333333;
+        --text-color: #FFFFFF;
+        --subtle-text-color: #AAAAAA;
+        --accent-color: #007AFF;
+    }
+}
+
+body.dark-theme {
+    --background-color: #1E1E1E;
+    --sidebar-color: #525252;
+    --active-tab-color: #7e7e7e;
+    --hover-color: #3E3E3E;
+    --border-color: #333333;
+    --text-color: #FFFFFF;
+    --subtle-text-color: #AAAAAA;
+}
+
+body.light-theme {
+    --background-color: #F8F7FA;
+    --sidebar-color: #FFFFFF;
+    --active-tab-color: #EAE9EC;
+    --hover-color: #F2F1F4;
+    --border-color: #E1E0E3;
+    --text-color: #333333;
+    --subtle-text-color: #888888;
+}
+
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overflow: hidden;
+    background-color: var(--sidebar-color);
+    color: var(--text-color);
+}
+
+#title-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    z-index: 102;
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Changed from flex-end */
+    background-color: var(--sidebar-color);
+}
+
+#title-bar.draggable {
+    -webkit-app-region: drag;
+}
+
+.title-bar-nav {
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    -webkit-app-region: no-drag;
+}
+
+.window-controls {
+    display: flex;
+    margin-right: 10px;
+    -webkit-app-region: no-drag;
+}
+
+.window-controls button {
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 5px;
+    -webkit-app-region: no-drag;
+    z-index: 103;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    width: 28px;
+    height: 28px;
+}
+
+.window-controls button:hover {
+    background-color: var(--hover-color);
+}
+
+.window-controls svg {
+    width: 12px;
+    height: 12px;
+    fill: var(--text-color);
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+    padding-top: 40px; /* Add padding to push container below the fixed title bar */
+    box-sizing: border-box; /* Include padding in height calculation */
+}
+
+.tabs-container {
+    width: 250px; /* Initial width, will be changed by JS */
+    min-width: 150px; /* Prevent resizing too small */
+    max-width: 500px; /* Prevent resizing too large */
+    background-color: var(--sidebar-color);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0; /* Prevent the container from shrinking */
+    padding-top: 0; /* Removed padding-top as it's now on the parent .container */
+}
+
+#resize-handle {
+    width: 10px;
+    cursor: col-resize;
+    background-color: var(--sidebar-color);
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+}
+
+#resize-handle:hover {
+    background-color: var(--accent-color);
+}
+
+
+.navigation {
+    display: flex;
+    align-items: center;
+    padding: 5px;
+    /* This element no longer needs a border as it's on the title bar now */
+}
+
+.nav-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 4px;
+}
+
+.nav-btn:hover {
+    background-color: var(--hover-color);
+}
+
+.nav-btn svg {
+    width: 16px;
+    height: 16px;
+    fill: var(--subtle-text-color);
+}
+
+#url-input {
+    flex-grow: 1;
+    padding: 10px 15px;
+    border-radius: 8px;
+    background-color: var(--active-tab-color);
+    color: var(--text-color);
+    outline: none;
+    border: none;
+}
+
+#url-input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+}
+
+#tabs-list {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 5px;
+}
+
+.tab {
+    padding: 10px 15px;
+    cursor: pointer;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.tab:hover {
+    background-color: var(--hover-color);
+}
+
+.tab.active {
+    background-color: var(--active-tab-color);
+}
+
+.tab-title {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.close-tab-btn {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-weight: bold;
+    color: var(--subtle-text-color);
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out;
+}
+
+.tab:hover .close-tab-btn {
+    opacity: 1;
+}
+
+.sidebar-footer {
+    display: flex;
+}
+
+#new-tab-btn, #settings-btn {
+    flex: 1;
+    padding: 15px;
+    border: none;
+    background-color: transparent;
+    color: var(--subtle-text-color);
+    cursor: pointer;
+    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#new-tab-btn:hover, #settings-btn:hover {
+    background-color: var(--hover-color);
+}
+
+#new-tab-btn svg, #settings-btn svg {
+    width: 16px;
+    height: 16px;
+    fill: var(--subtle-text-color);
+}
+
+
+.content-container {
+    flex-grow: 1;
+    padding: 10px;
+}
+
+/* Modal Styles */
+.modal-content {
+    background-color: var(--background-color);
+    padding: 20px 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    width: 500px;
+    max-width: 90%;
+    position: relative;
+}
+.close-modal-btn {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: var(--subtle-text-color);
+    padding: 5px;
+    line-height: 1;
+}
+.close-modal-btn:hover { 
+    color:var(--accent-color); 
+}
