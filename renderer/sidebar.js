@@ -1,11 +1,12 @@
 import { viewApi } from './viewApi.js';
 
 export class Sidebar {
-    constructor(settingsModal) {
+    constructor(settingsModal, initialSettings) {
         this.activeTabId = null;
         this.tabsList = null;
         this.urlInput = null;
         this.settingsModal = settingsModal;
+        this.settings = initialSettings || {};
 
         viewApi.onUpdateTitle(({ tabId, title }) => {
             this.updateTabTitle(tabId, title);
@@ -17,7 +18,12 @@ export class Sidebar {
             }
         });
 
-        // The onModalEvent listener has been moved to renderer.js
+        // Listen for live setting updates
+        viewApi.onSettingUpdated(({ key, value }) => {
+            if (this.settings && typeof this.settings === 'object') {
+                this.settings[key] = value;
+            }
+        });
     }
 
     updateURLInput(url) {
@@ -58,8 +64,9 @@ export class Sidebar {
             e.preventDefault();
             this.showTabContextMenu(e, tabId);
         });
-
-        viewApi.newTab(tabId);
+        
+        const url = this.settings?.newTabUrl || 'https://www.google.com';
+        viewApi.newTab(tabId, url);
         this.switchTab(tabId);
     }
 

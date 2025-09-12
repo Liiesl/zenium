@@ -93,7 +93,7 @@ class ViewManager {
         }
     }
 
-    newTab(tabId) {
+    newTab(tabId, url = 'https://www.google.com') {
         const view = new BrowserView();
         // Set initial bounds to 0x0 to keep it hidden until explicitly switched to.
         view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
@@ -106,7 +106,7 @@ class ViewManager {
         // Create the loading view (which will be added on top)
         this.createLoadingView(tabId);
         
-        view.webContents.loadURL('https://www.google.com');
+        view.webContents.loadURL(url);
 
         attachKeyBlocker(view.webContents);
 

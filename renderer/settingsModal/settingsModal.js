@@ -7,19 +7,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- Load Initial Settings ---
     const settings = await window.modalAPI.getSettings();
+
+    // Theme
     const currentTheme = settings.theme || 'system';
     const themeRadio = document.querySelector(`input[name="theme"][value="${currentTheme}"]`);
     if (themeRadio) {
         themeRadio.checked = true;
     }
 
-    // --- Theme Change Listener ---
+    // New Tab URL
+    const newTabUrlInput = document.getElementById('new-tab-url-input');
+    newTabUrlInput.value = settings.newTabUrl || '';
+
+    // --- Setting Change Listeners ---
+    // Theme
     document.querySelectorAll('input[name="theme"]').forEach(radio => {
         radio.addEventListener('change', (event) => {
             const newTheme = event.target.value;
-            // Use the new, specific API to set the setting
             window.modalAPI.setSetting('theme', newTheme);
         });
+    });
+
+    // New Tab URL
+    newTabUrlInput.addEventListener('input', (event) => {
+        window.modalAPI.setSetting('newTabUrl', event.target.value);
     });
 
     // --- Category Switching Logic ---

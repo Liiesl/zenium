@@ -9,7 +9,57 @@ const globalCSS = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'styles
 
 
 /**
- * Manages frameless, floating BrowserView instances (modals) on top of the main window.
+ * @file Manages frameless, floating BrowserView instances (modals) on top of the main window.
+ * @author [Your Name]
+ *
+ * @class ModalManager
+ * @description Centralized handler for creating, showing, and destroying modal dialogs.
+ * This manager uses Electron's `BrowserView` instead of `BrowserWindow` for modals.
+ *
+ * ### Best Practices & Architecture
+ *
+ * 1.  **Use of `BrowserView` over `BrowserWindow`**:
+ *     - **Lightweight**: `BrowserView`s are lighter than creating a full new window, making them ideal for temporary dialogs like settings or prompts. They are attached to an existing window rather than creating a new native window.
+ *     - **No Native Frame**: They are "frameless" by nature, allowing for fully custom-designed modals that match the application's theme.
+ *     - **Parent-Child Relationship**: They are intrinsically tied to the `mainWindow`, ensuring they are always on top and managed within the main application's lifecycle.
+ *
+ * 2.  **Centralized Management**:
+ *     - A single `ModalManager` instance (created in `main.js`) is responsible for all modals. This avoids scattered logic and provides a single source of truth for all active modals.
+ *     - The `modals` Map stores active modals by a unique ID, allowing for easy access and management (e.g., closing a specific modal by its ID).
+ *
+ * 3.  **Secure Inter-Process Communication (IPC)**:
+ *     - **Main Process Control**: All modal creation (`show`) and destruction (`close`) logic resides in the main process. The renderer process can only request these actions via IPC. This is a crucial security and stability pattern.
+ *     - **Dedicated Preload Script**: Each modal `BrowserView` gets a specific `modalPreload.js`. This script uses `contextBridge` to securely expose a minimal, controlled API (`window.modalAPI`) to the modal's renderer context. This prevents the modal's content from having direct access to Node.js or Electron APIs.
+ *     - **Specific IPC Channels**:
+ *       - `show-modal`: Renderer requests the main process to create and show a modal.
+ *       - `close-modal`: Renderer requests the main process to close a specific modal by ID.
+ *       - `request-close-self-modal`: A modal's renderer can ask to be closed without knowing its own ID. The main process identifies the sender's `webContents` and closes the corresponding `BrowserView`. This is a clean, self-contained pattern.
+ *       - `get-settings`/`set-setting`: Dedicated channels for settings, handled by the `SettingsManager`, but exposed to the modal via its preload script. This keeps concerns separated.
+ *
+ * 4.  **Dynamic Content Injection**:
+ *     - The HTML, CSS, and JavaScript for a modal are passed as strings/paths in the `show` method options.
+ *     - The `ModalManager` dynamically constructs a full HTML document and loads it into the `BrowserView` using a Data URL (`data:text/html;charset=utf-8,...`).
+ *     - This approach is highly flexible, as it avoids the need for creating separate HTML files for every modal and allows for shared, global styles to be injected easily.
+ *
+ * 5.  **Lifecycle and Behavior**:
+ *     - **Focus Management**: A `'blur'` event listener is attached to the modal's `webContents`. This common UX pattern automatically closes the modal if the user clicks outside of it, making for a less intrusive experience.
+ *     - **Singleton IDs**: The manager ensures only one modal with a given ID can exist at a time by closing any pre-existing modal with the same ID before showing a new one.
+ *
+ * ### Example Flow: Opening a Settings Modal
+ *
+ * 1.  **Renderer (e.g., `index.js`)**: A user clicks a "Settings" button.
+ * 2.  **Renderer**: The `SettingsModal.open()` method is called.
+ * 3.  **Renderer**: Inside `open()`, it calls `viewApi.showModal({...})`, which sends an IPC message over the `'show-modal'` channel with all the necessary HTML content, CSS/JS paths, and dimensions.
+ * 4.  **Main (`main.js`)**: The `ipcMain` listener for `'show-modal'` receives the request and calls `modalManager.show(options)`.
+ * 5.  **Main (`modalManager.js`)**:
+ *     - A new `BrowserView` is created.
+ *     - Its preload script (`modalPreload.js`) is set.
+ *     - The manager reads the global CSS and any specified CSS/JS files from the filesystem.
+ *     - It constructs the full HTML string and loads it as a Data URL.
+ *     - The `BrowserView` is attached to the `mainWindow` and its bounds are set.
+ *     - A `'blur'` listener is attached.
+ * 6.  **Modal Renderer (`settingsModal.js`)**:
+ *     - The script runs. It can now use `window.modalAPI.getSettings()` or `window.modalAPI.close()` to securely communicate back with the main process.
  */
 class ModalManager {
     constructor(mainWindow) {
@@ -119,6 +169,10 @@ class ModalManager {
         modalView.webContents.once('blur', () => {
             this.close(options.id);
         });
+        
+        // Open DevTools for the modal for debugging
+        modalView.webContents.openDevTools({ mode: 'undocked' });
+
     }
 
     /**

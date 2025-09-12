@@ -14,11 +14,16 @@ class App {
     async init() {
         const titlebar = new Titlebar().render();
         const settingsModal = new SettingsModal();
-        this.sidebar = new Sidebar(settingsModal);
+        const settings = await viewApi.getSettings(); // Fetch initial settings
+        this.sidebar = new Sidebar(settingsModal, settings); // Pass settings to sidebar
         const sidebarElement = this.sidebar.render();
         
         const contentContainer = document.createElement('div');
         contentContainer.className = 'content-container';
+
+        const contentWrapper = document.createElement('div');
+        contentWrapper.className = 'content-wrapper';
+        contentWrapper.appendChild(contentContainer);
 
         const resizeHandle = document.createElement('div');
         resizeHandle.id = 'resize-handle';
@@ -27,12 +32,12 @@ class App {
         container.className = 'container';
         container.appendChild(sidebarElement);
         container.appendChild(resizeHandle);
-        container.appendChild(contentContainer);
+        container.appendChild(contentWrapper);
         
         this.appElement.appendChild(titlebar);
         this.appElement.appendChild(container);
 
-        this.addResizeFunctionality(resizeHandle, sidebarElement);
+        this.addResizeFunctionality(resizeHandle, sidebarElement, contentContainer);
         await this.initTheme(); // Make init async to await theme
         this.initEventListeners();
         this.initNavigationControls();
@@ -81,8 +86,9 @@ class App {
         });
     }
 
-    addResizeFunctionality(handle, sidebar) {
+    addResizeFunctionality(handle, sidebar, contentContainer) {
         let isResizing = false;
+        const titleBarLeftArea = document.querySelector('.title-bar-left-area');
 
         const handleMouseMove = (e) => {
             if (!isResizing) return;
@@ -92,6 +98,10 @@ class App {
             if (newWidth > 500) newWidth = 500;
             
             sidebar.style.width = `${newWidth}px`;
+            if (titleBarLeftArea) {
+                titleBarLeftArea.style.width = `${newWidth}px`;
+            }
+            contentContainer.style.width = `${newWidth}px`;
             window.electronAPI.resizeSidebar(newWidth);
         };
 

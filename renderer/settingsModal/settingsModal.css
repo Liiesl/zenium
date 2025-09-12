@@ -70,6 +70,17 @@
     font-size: 13px;
 }
 
+.setting-item input[type="text"] {
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background-color: var(--input-background-color);
+    color: var(--text-color);
+    box-sizing: border-box;
+    margin-top: 10px;
+}
+
 .theme-options {
     margin-top: 15px;
 }

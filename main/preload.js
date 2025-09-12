@@ -3,7 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Tab/View Management
-  newTab: (tabId) => ipcRenderer.send('new-tab', tabId),
+  newTab: (tabId, url) => ipcRenderer.send('new-tab', { tabId, url }),
   switchTab: (tabId) => ipcRenderer.send('switch-tab', tabId),
   closeTab: (tabId) => ipcRenderer.send('close-tab', tabId),
   navigate: (tabId, url) => ipcRenderer.send('navigate', { tabId, url }),
@@ -32,5 +32,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // --- Settings API ---
     onSettingUpdated: (callback) => ipcRenderer.on('setting-updated', (_event, value) => callback(value)),
+    getSettings: () => ipcRenderer.invoke('get-settings'),
     isDarkMode: () => ipcRenderer.invoke('is-dark-mode')
 });

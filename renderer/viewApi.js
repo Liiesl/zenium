@@ -6,7 +6,7 @@
  */
 export const viewApi = {
   // Tab Management
-  newTab: (tabId) => window.electronAPI.newTab(tabId),
+  newTab: (tabId, url) => window.electronAPI.newTab(tabId, url),
   switchTab: (tabId) => window.electronAPI.switchTab(tabId),
   closeTab: (tabId) => window.electronAPI.closeTab(tabId),
   navigate: (tabId, url) => window.electronAPI.navigate(tabId, url),
@@ -32,4 +32,8 @@ export const viewApi = {
   closeModal: (id) => window.electronAPI.closeModal(id),
   onModalEvent: (callback) => window.electronAPI.onModalEvent(callback),
   sendModalAction: (action) => window.electronAPI.sendModalAction(action),
+
+  // Settings
+  onSettingUpdated: (callback) => window.electronAPI.onSettingUpdated(callback),
+  getSettings: () => window.electronAPI.getSettings(),
 };

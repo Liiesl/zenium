@@ -66,15 +66,26 @@ body, html {
     background-color: var(--sidebar-color);
 }
 
-#title-bar.draggable {
-    -webkit-app-region: drag;
-}
-
-.title-bar-nav {
+.title-bar-left-area {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    width: 250px;
+    min-width: 150px;
+    max-width: 500px;
     padding-left: 10px;
+}
+
+.title-bar-actions {
+    display: flex;
+    justify-content: space-between;
+    flex-grow: 1;
     -webkit-app-region: no-drag;
+}
+
+#title-bar.draggable {
+    -webkit-app-region: drag;
 }
 
 .window-controls {

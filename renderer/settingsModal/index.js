@@ -12,13 +12,22 @@ export class SettingsModal {
                 <div id="settings-sidebar">
                     <h3>Settings</h3>
                     <ul>
-                        <li class="settings-category active" data-page="appearance-page">Appearance</li>
-                        <!-- Add more categories here, e.g., <li class="settings-category" data-page="about-page">About</li> -->
+                        <li class="settings-category active" data-page="general-page">General</li>
+                        <li class="settings-category" data-page="appearance-page">Appearance</li>
                     </ul>
                 </div>
                 <div id="settings-main">
+                    <!-- General Page -->
+                    <div id="general-page" class="settings-page active">
+                        <h2>General</h2>
+                        <div class="setting-item">
+                            <h4>New Tab Page</h4>
+                            <p>Set the URL that loads when you open a new tab.</p>
+                            <input type="text" id="new-tab-url-input" placeholder="e.g., https://www.google.com">
+                        </div>
+                    </div>
                     <!-- Appearance Page -->
-                    <div id="appearance-page" class="settings-page active">
+                    <div id="appearance-page" class="settings-page">
                         <h2>Appearance</h2>
                         <div class="setting-item">
                             <h4>Theme</h4>
@@ -30,7 +39,6 @@ export class SettingsModal {
                             </div>
                         </div>
                     </div>
-                    <!-- Add more pages here, matching the data-page attribute above -->
                 </div>
                 <button id="close-modal-btn" class="close-modal-btn">&times;</button>
             </div>

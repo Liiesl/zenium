@@ -14,7 +14,8 @@ class SettingsManager {
 
     loadSettings() {
         const defaults = {
-            theme: 'system'
+            theme: 'system',
+            newTabUrl: 'https://www.google.com'
         };
         try {
             if (fs.existsSync(SETTINGS_PATH)) {

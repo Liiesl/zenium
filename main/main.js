@@ -132,8 +132,8 @@ ipcMain.on('sidebar-resize', (event, newWidth) => {
     if (viewManager) viewManager.updateSidebarWidth(newWidth);
 });
 
-ipcMain.on('new-tab', (event, tabId) => {
-    if (viewManager) viewManager.newTab(tabId);
+ipcMain.on('new-tab', (event, { tabId, url }) => {
+    if (viewManager) viewManager.newTab(tabId, url);
 });
 
 ipcMain.on('switch-tab', (event, tabId) => {
