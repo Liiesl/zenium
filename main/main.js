@@ -4,7 +4,8 @@ const path = require('path');
 const { ViewManager } = require('./viewManager.js');
 const { ModalManager } = require('./modalManager.js');
 const { SettingsManager } = require('./settingsManager.js');
-const { HistoryManager } = require('./historyManager.js'); // <-- ADD THIS
+const { SessionManager } = require('./sessionManager.js');
+const { HistoryManager } = require('./historyManager.js');
 const { attachKeyBlocker } = require('./keyblocker.js');
 const { registerZeniumProtocol } = require('./protocol.js');
 
@@ -12,7 +13,8 @@ let mainWindow;
 let viewManager;
 let modalManager;
 let settingsManager;
-let historyManager; // <-- ADD THIS
+let historyManager;
+let sessionManager;
 let pollMouseInterval = null;
 
 function createWindow() {
@@ -26,16 +28,23 @@ function createWindow() {
     },
   });
 
-  historyManager = new HistoryManager(); // <-- ADD THIS
-  viewManager = new ViewManager(mainWindow, historyManager); // <-- PASS TO ViewManager
+  historyManager = new HistoryManager();
+  viewManager = new ViewManager(mainWindow, historyManager);
   modalManager = new ModalManager(mainWindow);
+  sessionManager = new SessionManager();
   settingsManager = new SettingsManager();
   
-  // Correctly load index.html from the 'renderer' directory
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
   mainWindow.webContents.openDevTools({ mode: 'undocked' });
 
   mainWindow.on('resize', () => viewManager.updateActiveViewBounds());
+
+  // --- KEY CHANGE: Save session on 'close' instead of 'before-quit' ---
+  // This event fires before the window and its BrowserViews are destroyed,
+  // making it a much more reliable time to save the session state.
+  mainWindow.on('close', () => {
+    sessionManager.saveSession(viewManager);
+  });
 
   const startPolling = () => {
     if (pollMouseInterval) return;
@@ -87,7 +96,6 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // --- CENTRALIZED PROTOCOL HANDLING ---
   registerZeniumProtocol();
 
   createWindow();
@@ -98,29 +106,48 @@ app.whenReady().then(() => {
     }
   });
 
-  attachKeyBlocker(mainWindow.webContents);
-  
-});
+  // --- KEY CHANGE: MOVE session logic out of 'did-finish-load' ---
+  mainWindow.webContents.on('did-finish-load', () => {
+    // This event is now only for things that can happen immediately.
+    attachKeyBlocker(mainWindow.webContents);
+  });
 
+  // --- KEY CHANGE: ADD a new listener for our handshake signal ---
+  ipcMain.on('renderer-ready', () => {
+    console.log('[main.js] Received renderer-ready signal.');
+    const savedSession = sessionManager.loadSession();
+    if (savedSession && savedSession.tabs.length > 0) {
+      console.log(`[main.js] Found ${savedSession.tabs.length} tabs to restore.`);
+      sessionManager.restoreSession(viewManager, mainWindow, savedSession);
+    } else {
+      // If there's no session, tell the renderer to create one default tab.
+      console.log('[main.js] No saved session found. Instructing renderer to create an initial tab.');
+      mainWindow.webContents.send('create-initial-tab');
+    }
+  });
+});
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
-// --- NEW IPC handler for Search Suggestions ---
+// --- KEY CHANGE: The 'before-quit' handler is no longer needed for session saving. ---
+// It can be removed or left for other potential cleanup tasks.
+app.on('before-quit', () => {
+  console.log('Application is quitting.');
+});
+
+
+// --- IPC handlers remain the same ---
+
 ipcMain.handle('get-search-suggestions', (event, query) => {
     if (!query) {
         return [];
     }
-
-    console.log("Fetching search suggestions for query:", query);
-
-    // Use a Promise to handle the async network request
     return new Promise((resolve) => {
         const url = `https://suggestqueries.google.com/complete/search?client=chrome&hl=en&gl=us&q=${encodeURIComponent(query)}`;
         const request = net.request(url);
-
         let body = '';
         request.on('response', (response) => {
             response.on('data', (chunk) => {
@@ -130,37 +157,28 @@ ipcMain.handle('get-search-suggestions', (event, query) => {
                 try {
                     const data = JSON.parse(body);
                     const suggestions = data[1] || [];
-                    // Slice the suggestions to a maximum of 5
                     resolve(suggestions.slice(0, 5));
                 } catch (e) {
-                    console.error("Failed to parse search suggestions:", e);
                     resolve([]);
                 }
             });
             response.on('error', (error) => {
-                console.error("Error in search suggestion response:", error);
                 resolve([]);
             });
         });
-
         request.on('error', (error) => {
-            console.error("Failed to fetch search suggestions:", error);
             resolve([]);
         });
-        
         request.end();
     });
 });
 
-
-// --- NEW IPC Listener ---
 ipcMain.on('focus-main-window', () => {
     if (mainWindow) {
         mainWindow.webContents.focus();
     }
 });
 
-// --- IPC Listeners for Modals ---
 ipcMain.on('show-modal', (event, options) => {
     modalManager.show(options);
 });
@@ -169,14 +187,10 @@ ipcMain.on('close-modal', (event, id) => {
     modalManager.close(id);
 });
 
-// This is now a general-purpose action forwarder.
-// We will use a more specific 'set-setting' channel for settings.
 ipcMain.on('modal-action', (event, action) => {
     mainWindow.webContents.send('modal-event', action);
 });
 
-// Handle a modal requesting to close itself
-// The `event.sender.id` directly gives the webContents ID of the BrowserView that sent the message.
 ipcMain.on('request-close-self-modal', (event) => {
     const senderWebContentsId = event.sender.id;
     for (const [id, view] of modalManager.modals.entries()) {
@@ -187,16 +201,13 @@ ipcMain.on('request-close-self-modal', (event) => {
     }
 });
 
-// --- NEW IPC Listener for resizing ---
 ipcMain.on('resize-modal-self', (event, dimensions) => {
     const senderWebContentsId = event.sender.id;
-    console.log(`[main.js] Received 'resize-modal-self' from webContentsId: ${senderWebContentsId} with dimensions:`, dimensions);
     if (modalManager) {
         modalManager.resize(senderWebContentsId, dimensions);
     }
 });
 
-// --- NEW IPC HANDLER for History ---
 ipcMain.handle('get-history', (event) => {
     return historyManager.getAll();
 });
@@ -207,6 +218,10 @@ ipcMain.on('sidebar-resize', (event, newWidth) => {
 
 ipcMain.on('new-tab', (event, { tabId, url }) => {
     if (viewManager) viewManager.newTab(tabId, url);
+});
+
+ipcMain.on('restore-tab', (event, { tabId, url, history }) => {
+    if (viewManager) viewManager.newTab(tabId, url, history);
 });
 
 ipcMain.on('switch-tab', (event, tabId) => {
@@ -249,18 +264,14 @@ ipcMain.on('close-window', () => {
     mainWindow.close();
 });
 
-// --- NEW IPC HANDLER: Allows a view to request its own tabId ---
 ipcMain.handle('get-my-tab-id', (event) => {
-    // event.sender is the webContents that sent the message
     const senderWebContentsId = event.sender.id;
-
-    // We need to find which tabId in our ViewManager corresponds to this webContents ID.
     if (viewManager && viewManager.views) {
         for (const [tabId, view] of Object.entries(viewManager.views)) {
             if (view.webContents.id === senderWebContentsId) {
-                return tabId; // Found it! Return the tabId.
+                return tabId;
             }
         }
     }
-    return null; // Return null if not found (e.g., it's not a tab view)
+    return null;
 });

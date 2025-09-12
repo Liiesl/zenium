@@ -91,6 +91,38 @@ export class Sidebar {
         viewApi.newTab(tabId, url);
         this.switchTab(tabId);
     }
+    
+    // --- KEY CHANGE: Add this new method to handle restored tabs ---
+    createRestoredTab({ tabId, url, history }) {
+        const tabElement = document.createElement('div');
+        tabElement.className = 'tab';
+        tabElement.dataset.tabId = tabId;
+        // Start with a generic title; it will be updated once the page loads.
+        tabElement.innerHTML = `
+            <img class="tab-favicon" src="" style="display: none;" />
+            <span class="tab-title">Loading...</span>
+            <button class="close-tab-btn">x</button>
+        `;
+        this.tabsList.appendChild(tabElement);
+
+        const closeBtn = tabElement.querySelector('.close-tab-btn');
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.closeTab(tabId);
+        });
+
+        tabElement.addEventListener('click', () => {
+            this.switchTab(tabId);
+        });
+
+        tabElement.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            this.showTabContextMenu(e, tabId);
+        });
+
+        // Call the specific API to restore the tab in the main process
+        viewApi.restoreTab(tabId, url, history);
+    }
 
     showTabContextMenu(event, tabId) {
         const modalId = `context-menu-${tabId}`;

@@ -14,8 +14,8 @@ class App {
     async init() {
         const titlebar = new Titlebar().render();
         const settingsModal = new SettingsModal();
-        const settings = await viewApi.getSettings(); // Fetch initial settings
-        this.sidebar = new Sidebar(settingsModal, settings); // Pass settings to sidebar
+        const settings = await viewApi.getSettings();
+        this.sidebar = new Sidebar(settingsModal, settings);
         const sidebarElement = this.sidebar.render();
         
         const contentContainer = document.createElement('div');
@@ -37,13 +37,13 @@ class App {
         this.appElement.appendChild(titlebar);
         this.appElement.appendChild(container);
 
-        // Create the first tab now that the sidebar is in the DOM
-        this.sidebar.createTab(); // <- ADD THIS LINE
-
         this.addResizeFunctionality(resizeHandle, sidebarElement, contentContainer);
-        await this.initTheme(); // Make init async to await theme
+        await this.initTheme();
         this.initEventListeners();
         this.initNavigationControls();
+
+        // --- KEY CHANGE: Signal to the main process that the renderer is fully initialized ---
+        window.electronAPI.rendererReady();
     }
 
     initNavigationControls() {
@@ -71,14 +71,30 @@ class App {
     }
 
     initEventListeners() {
-        // Listen for live setting updates from the main process
         window.electronAPI.onSettingUpdated(({ key, value }) => {
             if (key === 'theme') {
-                this.applyTheme(); // Re-apply theme based on new setting
+                this.applyTheme();
             }
         });
 
-        // Listen for other actions from modals
+        // Listen for the 'create-tab' event from session restore
+        window.electronAPI.onCreateTab((data) => {
+            console.log('[Renderer] Received create-tab event for session restore:', data);
+            this.sidebar.createRestoredTab(data);
+        });
+
+        // Listen for the 'switch-tab' event from session restore
+        window.electronAPI.onSwitchTab((tabId) => {
+            console.log(`[Renderer] Received switch-tab event for tabId: ${tabId}`);
+            this.sidebar.switchTab(tabId);
+        });
+
+        // --- KEY CHANGE: Correctly listen for the "create initial tab" event via the preload API ---
+        window.electronAPI.onInitialTab(() => {
+            console.log('[Renderer] No session found. Creating a new initial tab.');
+            this.sidebar.createTab();
+        });
+
         window.electronAPI.onModalEvent(async (action) => {
             switch (action.type) {
                 case 'close-tab':
@@ -93,13 +109,13 @@ class App {
         });
     }
 
+    // ... rest of the file is unchanged ...
     addResizeFunctionality(handle, sidebar, contentContainer) {
         let isResizing = false;
         const titleBarLeftArea = document.querySelector('.title-bar-left-area');
 
         const handleMouseMove = (e) => {
             if (!isResizing) return;
-            // Add constraints for min/max width
             let newWidth = e.clientX;
             if (newWidth < 150) newWidth = 150;
             if (newWidth > 500) newWidth = 500;
@@ -116,22 +132,20 @@ class App {
             isResizing = false;
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
-            // Re-enable text selection
             document.body.style.userSelect = '';
         };
 
         handle.addEventListener('mousedown', (e) => {
             isResizing = true;
-            e.preventDefault(); // Prevent text selection
+            e.preventDefault();
             document.addEventListener('mousemove', handleMouseMove);
             document.addEventListener('mouseup', handleMouseUp);
-            // Disable text selection during resize
             document.body.style.userSelect = 'none';
         });
     }
     
     async initTheme() {
-        await this.applyTheme(); // Apply theme on initial load
+        await this.applyTheme();
 
         window.electronAPI.onSetDraggable(isDraggable => {
             const titleBar = document.getElementById('title-bar');
@@ -140,7 +154,6 @@ class App {
     }
 
     async applyTheme() {
-        // Ask main process what the effective theme is
         const isDarkMode = await window.electronAPI.isDarkMode();
         document.body.classList.toggle('dark-theme', isDarkMode);
         document.body.classList.toggle('light-theme', !isDarkMode);

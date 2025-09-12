@@ -1,4 +1,4 @@
-// viewManager.js
+// main/viewManager.js
 const { BrowserView } = require('electron');
 const path = require('path');
 const { attachKeyBlocker } = require('./keyblocker.js');
@@ -8,8 +8,8 @@ class ViewManager {
         this.mainWindow = mainWindow;
         this.historyManager = historyManager;
         this.views = {};
-        this.loadingViews = {}; // To hold loading overlays
-        this.isLoading = {}; // To track loading state per tab
+        this.loadingViews = {};
+        this.isLoading = {};
         this.activeTabId = null;
         this.sidebarWidth = 200;
         this.animationInterval = null;
@@ -39,29 +39,26 @@ class ViewManager {
         const view = this.views[tabId];
         const loadingView = this.loadingViews[tabId];
         if (view && loadingView) {
-            // Clear any pending hide timeouts
             if (this.hideLoadingTimeout[tabId]) {
                 clearTimeout(this.hideLoadingTimeout[tabId]);
                 delete this.hideLoadingTimeout[tabId];
             }
 
-            // Reset and start the loading animation
             loadingView.webContents.executeJavaScript(
                 'const loader = document.querySelector(".loader"); loader.classList.remove("finished"); loader.classList.add("loading");',
                 true
             );
             
             const viewBounds = view.getBounds();
-            const loadingBarHeight = 5; // Height of the loading bar
+            const loadingBarHeight = 5;
 
             loadingView.setBounds({
                 x: viewBounds.x,
-                y: viewBounds.y + viewBounds.height - loadingBarHeight, // Positioned at the bottom
+                y: viewBounds.y + viewBounds.height - loadingBarHeight,
                 width: viewBounds.width,
                 height: loadingBarHeight
             });
 
-            // *** KEY CHANGE: Explicitly bring the loading view to the top ***
             this.mainWindow.setTopBrowserView(loadingView);
         }
     }
@@ -78,12 +75,11 @@ class ViewManager {
                 }
                 this.hideLoadingTimeout[tabId] = setTimeout(() => {
                     this.hideLoadingOverlay(tabId);
-                    // *** KEY CHANGE: Ensure the main content view is on top after loading finishes ***
                     if (this.views[tabId] && this.activeTabId === tabId) {
                         this.mainWindow.setTopBrowserView(this.views[tabId]);
                     }
                     delete this.hideLoadingTimeout[tabId];
-                }, 600); // Wait for animations to complete
+                }, 600);
             });
         }
     }
@@ -95,7 +91,7 @@ class ViewManager {
         }
     }
 
-    newTab(tabId, url = 'zenium://newtab') {
+    newTab(tabId, url = 'zenium://newtab', history = null) {
         const view = new BrowserView({
             webPreferences: {
                 preload: path.join(__dirname, 'preload.js'),
@@ -112,10 +108,45 @@ class ViewManager {
 
         this.createLoadingView(tabId);
         
-        view.webContents.loadURL(url);
+        // --- KEY CHANGE: Async function to properly restore history ---
+        const restoreHistory = async () => {
+            if (view.webContents.isDestroyed()) return;
+
+            // Clear any history that might have been created by an initial blank page.
+            view.webContents.clearHistory();
+            
+            console.log(`[ViewManager] Sequentially loading ${history.entries.length} pages for tab ${tabId}.`);
+            // Sequentially load each URL. The `loadURL` method returns a promise that
+            // resolves when the page finishes loading, making it perfect for await.
+            for (const entryUrl of history.entries) {
+                try {
+                    await view.webContents.loadURL(entryUrl);
+                } catch (error) {
+                    console.warn(`[ViewManager] Failed to load history entry ${entryUrl} for tab ${tabId}:`, error.message);
+                }
+                if (view.webContents.isDestroyed()) break; // Stop if the tab was closed during restore
+            }
+
+            // After loading all entries, the view is on the LAST page of the history.
+            // Now, we silently navigate to the correct index it was on when the session was saved.
+            if (!view.webContents.isDestroyed() && view.webContents.getActiveIndex() !== history.index) {
+                console.log(`[ViewManager] Navigating to correct history index: ${history.index}`);
+                view.webContents.goToIndex(history.index);
+            }
+            console.log(`[ViewManager] History restoration complete for tab ${tabId}.`);
+        };
+
+        if (history && history.entries && history.entries.length > 0 && history.index > -1) {
+            // This is a restored tab.
+            restoreHistory();
+        } else {
+            // This is a brand new tab, just load the URL.
+            view.webContents.loadURL(url);
+        }
 
         attachKeyBlocker(view.webContents);
 
+        // ... (all event listeners like 'did-start-loading', 'page-title-updated', etc. remain the same) ...
         view.webContents.on('did-start-loading', () => {
             if (view.webContents.getURL().startsWith('zenium://')) return;
             this.isLoading[tabId] = true;
@@ -130,12 +161,10 @@ class ViewManager {
                 this.finishLoading(tabId);
             }
 
-            // --- ADDED: Record history here to ensure the title is correct ---
             if (view.webContents && !view.webContents.isDestroyed()) {
                 const pageUrl = view.webContents.getURL();
                 const pageTitle = view.webContents.getTitle();
 
-                // Don't add internal or blank pages to history
                 if (!pageUrl.startsWith('zenium://') && pageUrl !== 'about:blank') {
                     this.historyManager.add({ url: pageUrl, title: pageTitle });
                 }
@@ -177,11 +206,10 @@ class ViewManager {
 
         view.webContents.on('did-navigate', () => {
             sendUrlUpdate();
-            // --- REMOVED: History logic was moved from here ---
         });
         view.webContents.on('did-navigate-in-page', sendUrlUpdate);
     }
-
+    
     switchTab(tabId) {
         if (!this.views[tabId]) return;
 

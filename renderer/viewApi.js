@@ -7,6 +7,7 @@
 export const viewApi = {
   // Tab Management
   newTab: (tabId, url) => window.electronAPI.newTab(tabId, url),
+  restoreTab: (tabId, url, history) => window.electronAPI.restoreTab(tabId, url, history),
   switchTab: (tabId) => window.electronAPI.switchTab(tabId),
   closeTab: (tabId) => window.electronAPI.closeTab(tabId),
   navigate: (tabId, url) => window.electronAPI.navigate(tabId, url),
