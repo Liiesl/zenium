@@ -1,10 +1,11 @@
 import { viewApi } from './viewApi.js';
+import { URLInput } from './input/index.js'; // Import the new URLInput
 
 export class Sidebar {
     constructor(settingsModal, initialSettings) {
         this.activeTabId = null;
         this.tabsList = null;
-        this.urlInput = null;
+        this.urlInput = new URLInput(); // Instantiate the new URLInput
         this.settingsModal = settingsModal;
         this.settings = initialSettings || {};
 
@@ -14,7 +15,7 @@ export class Sidebar {
 
         viewApi.onURLUpdated(({ tabId, url }) => {
             if (tabId === this.activeTabId) {
-                this.updateURLInput(url);
+                this.urlInput.updateURL(url);
             }
         });
 
@@ -24,10 +25,6 @@ export class Sidebar {
                 this.settings[key] = value;
             }
         });
-    }
-
-    updateURLInput(url) {
-        if (this.urlInput) this.urlInput.value = url;
     }
 
     updateTabTitle(tabId, title) {
@@ -126,6 +123,7 @@ export class Sidebar {
         if (newActiveTab) {
             newActiveTab.classList.add('active');
             this.activeTabId = tabId;
+            this.urlInput.setActiveTabId(tabId); // Inform the URLInput of the active tab
             viewApi.switchTab(tabId);
         }
     }
@@ -149,11 +147,10 @@ export class Sidebar {
     render() {
         const sidebarContainer = document.createElement('div');
         sidebarContainer.className = 'tabs-container';
+        
+        const urlInputContainer = this.urlInput.render();
 
         sidebarContainer.innerHTML = `
-            <div class="navigation">
-                <input type="text" id="url-input" placeholder="Enter URL">
-            </div>
             <div id="tabs-list"></div>
             <div class="sidebar-footer">
                 <button id="new-tab-btn">
@@ -164,29 +161,15 @@ export class Sidebar {
                 </button>
             </div>
         `;
+        
+        sidebarContainer.prepend(urlInputContainer);
 
         this.tabsList = sidebarContainer.querySelector('#tabs-list');
         const newTabBtn = sidebarContainer.querySelector('#new-tab-btn');
         const settingsBtn = sidebarContainer.querySelector('#settings-btn');
-        this.urlInput = sidebarContainer.querySelector('#url-input');
-
+        
         newTabBtn.addEventListener('click', () => this.createTab());
         settingsBtn.addEventListener('click', () => this.settingsModal.open());
-        this.urlInput.addEventListener('keyup', (e) => {
-            if (e.key === 'Enter' && this.activeTabId) {
-                let url = e.target.value.trim();
-                const isLocal = url.startsWith('localhost') || url.startsWith('127.0.0.1');
-
-                if (!url.startsWith('http://') && !url.startsWith('https://')) {
-                    if (isLocal) {
-                        url = 'http://' + url;
-                    } else {
-                        url = 'https://' + url;
-                    }
-                }
-                viewApi.navigate(this.activeTabId, url);
-            }
-        });
 
         this.createTab();
         

@@ -81,7 +81,11 @@ class App {
                 case 'close-tab':
                     this.sidebar.closeTab(action.tabId);
                     break;
-                // 'set-theme' is no longer handled here
+                case 'navigate-to-url':
+                    if (action.tabId && action.url) {
+                        viewApi.navigate(action.tabId, action.url);
+                    }
+                    break;
             }
         });
     }

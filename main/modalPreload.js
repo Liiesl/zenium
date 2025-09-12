@@ -25,4 +25,18 @@ contextBridge.exposeInMainWorld('modalAPI', {
    * @param {*} value - The new value.
    */
   setSetting: (key, value) => ipcRenderer.send('set-setting', { key, value }),
+
+  /**
+   * Notifies the main process to resize this modal to fit its content.
+   * @param {object} dimensions - The new dimensions for the modal.
+   * @param {number} dimensions.height - The new required height for the content.
+   */
+  resize: (dimensions) => ipcRenderer.send('resize-modal-self', dimensions),
+
+  /**
+   * Fetches search suggestions from the main process.
+   * @param {string} query - The search query.
+   * @returns {Promise<string[]>} A promise that resolves to an array of suggestions.
+   */
+  getSearchSuggestions: (query) => ipcRenderer.invoke('get-search-suggestions', query),
 });

@@ -1,5 +1,5 @@
 // main.js
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, net } = require('electron'); // Import net
 const path = require('path');
 const { ViewManager } = require('./viewManager.js');
 const { ModalManager } = require('./modalManager.js');
@@ -100,6 +100,58 @@ app.on('window-all-closed', () => {
   }
 });
 
+// --- NEW IPC handler for Search Suggestions ---
+ipcMain.handle('get-search-suggestions', (event, query) => {
+    if (!query) {
+        return [];
+    }
+
+    console.log("Fetching search suggestions for query:", query);
+
+    // Use a Promise to handle the async network request
+    return new Promise((resolve) => {
+        const url = `https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(query)}`;
+        const request = net.request(url);
+
+        let body = '';
+        request.on('response', (response) => {
+            response.on('data', (chunk) => {
+                body += chunk.toString();
+                console.log("Received chunk:", chunk.toString());
+            });
+            response.on('end', () => {
+                try {
+                    const data = JSON.parse(body);
+                    const suggestions = data[1] || [];
+                    resolve(suggestions);
+                } catch (e) {
+                    console.error("Failed to parse search suggestions:", e);
+                    resolve([]);
+                }
+            });
+            response.on('error', (error) => {
+                console.error("Error in search suggestion response:", error);
+                resolve([]);
+            });
+        });
+
+        request.on('error', (error) => {
+            console.error("Failed to fetch search suggestions:", error);
+            resolve([]);
+        });
+        
+        request.end();
+    });
+});
+
+
+// --- NEW IPC Listener ---
+ipcMain.on('focus-main-window', () => {
+    if (mainWindow) {
+        mainWindow.webContents.focus();
+    }
+});
+
 // --- IPC Listeners for Modals ---
 ipcMain.on('show-modal', (event, options) => {
     modalManager.show(options);
@@ -124,6 +176,15 @@ ipcMain.on('request-close-self-modal', (event) => {
             modalManager.close(id);
             break;
         }
+    }
+});
+
+// --- NEW IPC Listener for resizing ---
+ipcMain.on('resize-modal-self', (event, dimensions) => {
+    const senderWebContentsId = event.sender.id;
+    console.log(`[main.js] Received 'resize-modal-self' from webContentsId: ${senderWebContentsId} with dimensions:`, dimensions);
+    if (modalManager) {
+        modalManager.resize(senderWebContentsId, dimensions);
     }
 });
 

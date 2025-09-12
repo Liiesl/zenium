@@ -34,6 +34,7 @@ const globalCSS = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'styles
  *       - `show-modal`: Renderer requests the main process to create and show a modal.
  *       - `close-modal`: Renderer requests the main process to close a specific modal by ID.
  *       - `request-close-self-modal`: A modal's renderer can ask to be closed without knowing its own ID. The main process identifies the sender's `webContents` and closes the corresponding `BrowserView`. This is a clean, self-contained pattern.
+ *       - `resize-modal-self`: A modal's renderer can request a resize based on its content, and the main process will adjust its `BrowserView` bounds.
  *       - `get-settings`/`set-setting`: Dedicated channels for settings, handled by the `SettingsManager`, but exposed to the modal via its preload script. This keeps concerns separated.
  *
  * 4.  **Dynamic Content Injection**:
@@ -42,7 +43,7 @@ const globalCSS = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'styles
  *     - This approach is highly flexible, as it avoids the need for creating separate HTML files for every modal and allows for shared, global styles to be injected easily.
  *
  * 5.  **Lifecycle and Behavior**:
- *     - **Focus Management**: A `'blur'` event listener is attached to the modal's `webContents`. This common UX pattern automatically closes the modal if the user clicks outside of it, making for a less intrusive experience.
+ *     - **Focus Management**: A `'blur'` event listener is attached to the modal's `webContents`. This common UX pattern automatically closes the modal if the user clicks outside of it, making for a less intrusive experience. This behavior can be disabled.
  *     - **Singleton IDs**: The manager ensures only one modal with a given ID can exist at a time by closing any pre-existing modal with the same ID before showing a new one.
  *
  * ### Example Flow: Opening a Settings Modal
@@ -57,7 +58,7 @@ const globalCSS = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'styles
  *     - The manager reads the global CSS and any specified CSS/JS files from the filesystem.
  *     - It constructs the full HTML string and loads it as a Data URL.
  *     - The `BrowserView` is attached to the `mainWindow` and its bounds are set.
- *     - A `'blur'` listener is attached.
+ *     - A `'blur'` listener is attached (if not disabled).
  * 6.  **Modal Renderer (`settingsModal.js`)**:
  *     - The script runs. It can now use `window.modalAPI.getSettings()` or `window.modalAPI.close()` to securely communicate back with the main process.
  */
@@ -65,6 +66,7 @@ class ModalManager {
     constructor(mainWindow) {
         this.mainWindow = mainWindow;
         this.modals = new Map(); // Stores modals by their user-defined ID
+        this.modalIdByWebContentsId = new Map(); // Maps webContents.id to user-defined ID
     }
 
     /**
@@ -72,6 +74,7 @@ class ModalManager {
      * @param {object} options - Configuration for the modal.
      * @param {string} options.id - A unique identifier for the modal.
      * @param {string} options.content - The HTML content to be rendered in the modal.
+     * @param {boolean} [options.closeOnBlur=true] - If false, the modal will not close on focus loss.
      * @param {string[]} [options.cssPaths=[]] - Paths to CSS files, relative to the renderer directory.
      * @param {string[]} [options.jsPaths=[]] - Paths to JS files, relative to the renderer directory.
      * @param {number} options.x - The x-coordinate.
@@ -95,6 +98,12 @@ class ModalManager {
 
         this.mainWindow.addBrowserView(modalView);
         this.modals.set(options.id, modalView);
+        this.modalIdByWebContentsId.set(modalView.webContents.id, options.id);
+
+        // Cleanup the map when the view is destroyed
+        modalView.webContents.on('destroyed', () => {
+            this.modalIdByWebContentsId.delete(modalView.webContents.id);
+        });
 
         // Make the background transparent
         modalView.setBackgroundColor('#00000000');
@@ -165,15 +174,62 @@ class ModalManager {
             height: options.height,
         });
 
-        // Add a one-time listener to close the modal when it loses focus
-        modalView.webContents.once('blur', () => {
-            this.close(options.id);
-        });
-        
         // Open DevTools for the modal for debugging
-        modalView.webContents.openDevTools({ mode: 'undocked' });
+        // modalView.webContents.openDevTools({ mode: 'undocked' });
+
+        // *** CHANGE: Wait for the modal content to load, then focus it ***
+        modalView.webContents.on('did-finish-load', () => {
+            modalView.webContents.focus();
+        });
+
+        // Add a one-time listener to close the modal when it loses focus, unless disabled.
+        if (options.closeOnBlur !== false) {
+            modalView.webContents.once('blur', () => {
+                this.close(options.id);
+            });
+        }
 
     }
+
+    /**
+     * Resizes a modal view based on its webContents ID.
+     * @param {number} webContentsId - The webContents ID of the modal view.
+     * @param {object} dimensions - The new dimensions.
+     * @param {number} dimensions.height - The new height.
+     */
+    resize(webContentsId, dimensions) {
+        console.log(`[modalManager.js] resize() called for webContentsId: ${webContentsId}`);
+
+        const id = this.modalIdByWebContentsId.get(webContentsId);
+        if (!id) {
+            console.error(`[modalManager.js] No modal ID found for webContentsId: ${webContentsId}`);
+            return;
+        }
+
+        console.log(`[modalManager.js] Found modal ID: '${id}' for webContentsId: ${webContentsId}`);
+
+        const modalView = this.modals.get(id);
+        if (modalView) {
+            const currentBounds = modalView.getBounds();
+            console.log(`[modalManager.js] Current bounds for modal '${id}':`, currentBounds);
+
+            const newBounds = {
+                x: currentBounds.x,
+                y: currentBounds.y,
+                width: currentBounds.width,
+                height: Math.round(dimensions.height), // Use the new height
+            };
+
+            console.log(`[modalManager.js] Setting new bounds for modal '${id}':`, newBounds);
+            modalView.setBounds(newBounds);
+            
+            // This existing log confirms the final step
+            console.log(`Resized modal ${id} to height: ${dimensions.height}`);
+        } else {
+            console.error(`[modalManager.js] Modal view with ID '${id}' not found in 'this.modals' map.`);
+        }
+    }
+
 
     /**
      * Closes and destroys a modal view by its ID.

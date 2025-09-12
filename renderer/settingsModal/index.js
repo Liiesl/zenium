@@ -55,6 +55,7 @@ export class SettingsModal {
             x, y, width, height,
             cssPaths: ['../renderer/settingsModal/settingsModal.css'],
             jsPaths: ['../renderer/settingsModal/settingsModal.js'],
+            closeOnBlur: false, // Don't close when focus is lost
         });
     }
 
