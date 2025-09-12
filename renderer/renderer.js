@@ -37,12 +37,15 @@ class App {
         this.appElement.appendChild(titlebar);
         this.appElement.appendChild(container);
 
+        // Create the first tab now that the sidebar is in the DOM
+        this.sidebar.createTab(); // <- ADD THIS LINE
+
         this.addResizeFunctionality(resizeHandle, sidebarElement, contentContainer);
         await this.initTheme(); // Make init async to await theme
         this.initEventListeners();
         this.initNavigationControls();
     }
-    
+
     initNavigationControls() {
         const backBtn = document.getElementById('back-btn');
         const forwardBtn = document.getElementById('forward-btn');

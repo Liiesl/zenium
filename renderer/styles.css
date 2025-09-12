@@ -71,7 +71,7 @@ body, html {
     align-items: center;
     justify-content: space-between;
     flex-shrink: 0;
-    width: 250px;
+    width: 200px;
     min-width: 150px;
     max-width: 500px;
     padding-left: 10px;
@@ -127,7 +127,7 @@ body, html {
 }
 
 .tabs-container {
-    width: 250px; /* Initial width, will be changed by JS */
+    width: 200px; /* Initial width, will be changed by JS */
     min-width: 150px; /* Prevent resizing too small */
     max-width: 500px; /* Prevent resizing too large */
     background-color: var(--sidebar-color);
@@ -185,7 +185,7 @@ body, html {
     border-radius: 8px;
     background-color: var(--active-tab-color);
     color: var(--text-color);
-    text-align: center;
+    text-align: left;
     cursor: pointer;
     white-space: nowrap;
     overflow: hidden;
@@ -207,8 +207,7 @@ body, html {
     cursor: pointer;
     border-radius: 8px;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    align-items: left;
     margin-bottom: 5px;
     border: none;
 }
@@ -219,6 +218,14 @@ body, html {
 
 .tab.active {
     background-color: var(--active-tab-color);
+}
+
+.tab-favicon {
+    width: 16px;
+    height: 16px;
+    margin-right: 10px;
+    margin-top: 3px;
+    flex-shrink: 0;
 }
 
 .tab-title {

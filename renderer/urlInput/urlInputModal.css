@@ -1,0 +1,45 @@
+/* renderer/urlInput/urlInputModal.css */
+
+body {
+    overflow: visible !important;
+}
+#modal-container {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--background-color);
+}
+#modal-url-input {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bachground-color);
+    color: var(--text-color);
+    border-radius: 8px;
+    box-sizing: border-box;
+    outline: none;
+    margin-bottom: 10px;
+}
+ #modal-url-input:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.2);
+}
+#suggestions-container {
+    color: var(--text-color);
+    max-height: 300px;
+    overflow-y: auto;
+    padding-top: 0;
+}
+.suggestion-item {
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 15px;
+    border-radius: 6px;
+}
+.suggestion-item:hover {
+    background-color: var(--hover-color);
+}
+.suggestion-item.active {
+    background-color: var(--accent-color);
+    color: white;
+}

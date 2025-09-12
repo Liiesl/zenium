@@ -9,7 +9,7 @@ class ViewManager {
         this.loadingViews = {}; // To hold loading overlays
         this.isLoading = {}; // To track loading state per tab
         this.activeTabId = null;
-        this.sidebarWidth = 250;
+        this.sidebarWidth = 200;
         this.animationInterval = null;
         this.VIEW_PADDING = 10;
         this.hideLoadingTimeout = {}; // To manage hide timeouts
@@ -139,6 +139,12 @@ class ViewManager {
             this.mainWindow.webContents.send('update-tab-title', { tabId, title });
         });
         
+        view.webContents.on('page-favicon-updated', (event, favicons) => {
+            if (favicons && favicons.length > 0) {
+                this.mainWindow.webContents.send('update-tab-favicon', { tabId, faviconUrl: favicons[0] });
+            }
+        });
+
         view.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
             console.error(`[ViewManager] Page failed to load: ${validatedURL}`);
             console.error(`[ViewManager] Error [${errorCode}]: ${errorDescription}`);

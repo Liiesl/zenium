@@ -1,5 +1,5 @@
 import { viewApi } from './viewApi.js';
-import { URLInput } from './input/index.js'; // Import the new URLInput
+import { URLInput } from './urlInput/index.js'; // Import the new URLInput
 
 export class Sidebar {
     constructor(settingsModal, initialSettings) {
@@ -11,6 +11,10 @@ export class Sidebar {
 
         viewApi.onUpdateTitle(({ tabId, title }) => {
             this.updateTabTitle(tabId, title);
+        });
+
+        viewApi.onFaviconUpdated(({ tabId, faviconUrl }) => {
+            this.updateTabFavicon(tabId, faviconUrl);
         });
 
         viewApi.onURLUpdated(({ tabId, url }) => {
@@ -27,6 +31,14 @@ export class Sidebar {
         });
     }
 
+    updateTabFavicon(tabId, faviconUrl) {
+        const faviconElement = document.querySelector(`.tab[data-tab-id="${tabId}"] .tab-favicon`);
+        if (faviconElement) {
+            faviconElement.src = faviconUrl;
+            faviconElement.style.display = 'inline';
+        }
+    }
+
     updateTabTitle(tabId, title) {
         const tabElement = document.querySelector(`.tab[data-tab-id="${tabId}"] .tab-title`);
         if (tabElement) {
@@ -41,6 +53,7 @@ export class Sidebar {
         tabElement.className = 'tab';
         tabElement.dataset.tabId = tabId;
         tabElement.innerHTML = `
+            <img class="tab-favicon" src="" style="display: none;" />
             <span class="tab-title">New Tab</span>
             <button class="close-tab-btn">x</button>
         `;
@@ -75,7 +88,7 @@ export class Sidebar {
                     list-style: none;
                     margin: 0;
                     padding: 8px 0;
-                    background-color: var(--sidebar-color);
+                    background-color: var(--background-color);
                     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
                     border-radius: 8px;
                     overflow: hidden;
@@ -171,7 +184,7 @@ export class Sidebar {
         newTabBtn.addEventListener('click', () => this.createTab());
         settingsBtn.addEventListener('click', () => this.settingsModal.open());
 
-        this.createTab();
+        // this.createTab(); // <- REMOVE THIS LINE
         
         return sidebarContainer;
     }

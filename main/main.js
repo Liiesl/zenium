@@ -123,7 +123,8 @@ ipcMain.handle('get-search-suggestions', (event, query) => {
                 try {
                     const data = JSON.parse(body);
                     const suggestions = data[1] || [];
-                    resolve(suggestions);
+                    // Slice the suggestions to a maximum of 5
+                    resolve(suggestions.slice(0, 5));
                 } catch (e) {
                     console.error("Failed to parse search suggestions:", e);
                     resolve([]);

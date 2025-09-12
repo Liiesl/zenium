@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   reload: (tabId) => ipcRenderer.send('reload', tabId),
   onUpdateTitle: (callback) => ipcRenderer.on('update-tab-title', (_event, value) => callback(value)),
   onURLUpdated: (callback) => ipcRenderer.on('url-updated', (_event, value) => callback(value)),
+  onFaviconUpdated: (callback) => ipcRenderer.on('update-tab-favicon', (_event, value) => callback(value)),
     
     // Window Controls
     minimizeWindow: () => ipcRenderer.send('minimize-window'),
