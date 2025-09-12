@@ -90,7 +90,6 @@ body, html {
 
 .window-controls {
     display: flex;
-    margin-right: 10px;
     -webkit-app-region: no-drag;
 }
 
@@ -104,13 +103,16 @@ body, html {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 8px;
-    width: 28px;
-    height: 28px;
+    width: 40px;
+    height: 40px;
 }
 
 .window-controls button:hover {
     background-color: var(--hover-color);
+}
+
+#close-btn:hover{
+    background-color: red;
 }
 
 .window-controls svg {
@@ -210,6 +212,8 @@ body, html {
     align-items: left;
     margin-bottom: 5px;
     border: none;
+    -webkit-user-select: none; /* Safari */
+    user-select: none; /* Standard */
 }
 
 .tab:hover {
@@ -242,10 +246,17 @@ body, html {
     color: var(--subtle-text-color);
     opacity: 0;
     transition: opacity 0.15s ease-in-out;
+    margin-left: auto;
+    border-radius: 4px;
 }
 
 .tab:hover .close-tab-btn {
     opacity: 1;
+}
+
+.close-tab-btn:hover {
+    color: var(--hover-color);
+    background-color: var(--subtle-text-color);
 }
 
 .sidebar-footer {

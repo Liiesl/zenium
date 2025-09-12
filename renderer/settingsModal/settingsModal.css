@@ -70,7 +70,8 @@
     font-size: 13px;
 }
 
-.setting-item input[type="text"] {
+.setting-item input[type="text"],
+.setting-item select {
     width: 100%;
     padding: 8px;
     border-radius: 4px;
@@ -79,6 +80,11 @@
     color: var(--text-color);
     box-sizing: border-box;
     margin-top: 10px;
+}
+
+.setting-item select option {
+    background-color: var(--background-color);
+    color: var(--text-color);
 }
 
 .theme-options {
@@ -90,4 +96,8 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
+}
+
+.hidden {
+    display: none;
 }

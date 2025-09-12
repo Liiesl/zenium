@@ -1,3 +1,4 @@
+// sidebar.js
 import { viewApi } from './viewApi.js';
 import { URLInput } from './urlInput/index.js'; // Import the new URLInput
 
@@ -44,6 +45,9 @@ export class Sidebar {
         if (tabElement) {
             tabElement.textContent = title;
             tabElement.title = title;
+            if (tabId === this.activeTabId) {
+                document.title = `${title} - ZenIUM`;
+            }
         }
     }
 
@@ -75,7 +79,15 @@ export class Sidebar {
             this.showTabContextMenu(e, tabId);
         });
         
-        const url = this.settings?.newTabUrl || 'https://www.google.com';
+        // --- FIXED: Use the setting to determine the new tab URL ---
+        let url = this.settings?.newTabUrl || 'zenium://newtab';
+        
+        // If the user has selected the default new tab page, we append the tabId
+        // so the page can identify itself. For custom URLs, we load them directly.
+        if (url === 'zenium://newtab') {
+            url = `zenium://newtab?tabId=${tabId}`;
+        }
+
         viewApi.newTab(tabId, url);
         this.switchTab(tabId);
     }
@@ -136,6 +148,8 @@ export class Sidebar {
         if (newActiveTab) {
             newActiveTab.classList.add('active');
             this.activeTabId = tabId;
+            const title = newActiveTab.querySelector('.tab-title').textContent;
+            document.title = `${title} - ZenIUM`;
             this.urlInput.setActiveTabId(tabId); // Inform the URLInput of the active tab
             viewApi.switchTab(tabId);
         }
@@ -152,6 +166,7 @@ export class Sidebar {
                     this.switchTab(firstTab.dataset.tabId);
                 } else {
                     this.activeTabId = null;
+                    document.title = 'ZenIUM';
                 }
             }
         }
@@ -184,7 +199,7 @@ export class Sidebar {
         newTabBtn.addEventListener('click', () => this.createTab());
         settingsBtn.addEventListener('click', () => this.settingsModal.open());
 
-        // this.createTab(); // <- REMOVE THIS LINE
+        // this.createTab(); // <- This line is now in renderer.js
         
         return sidebarContainer;
     }

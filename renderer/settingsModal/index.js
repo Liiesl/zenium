@@ -22,8 +22,12 @@ export class SettingsModal {
                         <h2>General</h2>
                         <div class="setting-item">
                             <h4>New Tab Page</h4>
-                            <p>Set the URL that loads when you open a new tab.</p>
-                            <input type="text" id="new-tab-url-input" placeholder="e.g., https://www.google.com">
+                            <p>Set the page that loads when you open a new tab.</p>
+                            <select id="new-tab-url-select">
+                                <option value="zenium://newtab">Zenium New Tab</option>
+                                <option value="custom">Custom URL</option>
+                            </select>
+                            <input type="text" id="new-tab-url-input" class="hidden" placeholder="e.g., https://www.google.com">
                         </div>
                     </div>
                     <!-- Appearance Page -->

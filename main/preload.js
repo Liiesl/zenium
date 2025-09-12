@@ -34,5 +34,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // --- Settings API ---
     onSettingUpdated: (callback) => ipcRenderer.on('setting-updated', (_event, value) => callback(value)),
     getSettings: () => ipcRenderer.invoke('get-settings'),
-    isDarkMode: () => ipcRenderer.invoke('is-dark-mode')
+    isDarkMode: () => ipcRenderer.invoke('is-dark-mode'),
+
+    // --- zenium:// protocol API ---
+    getTabId: () => ipcRenderer.invoke('get-my-tab-id'),
+
+    // --- NEW: Search Suggestions API ---
+    getSearchSuggestions: (query) => ipcRenderer.invoke('get-search-suggestions', query)
 });

@@ -14,16 +14,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!query) return;
         let url;
         
-        const isLikelyUrl = (query.includes('.') && !query.includes(' ')) || query.startsWith('localhost') || query.startsWith('127.0.0.1');
+        // --- MODIFIED: Added a check for '://' to recognize any protocol, including zenium:// ---
+        const isLikelyUrl = (query.includes('.') && !query.includes(' ')) || 
+                            query.startsWith('localhost') || 
+                            query.startsWith('127.0.0.1') ||
+                            query.includes('://');
 
         if (isLikelyUrl) {
-            const isLocal = query.startsWith('localhost') || query.startsWith('127.0.0.1');
-            if (!query.startsWith('http://') && !query.startsWith('https://')) {
-                url = (isLocal ? 'http://' : 'https://') + query;
-            } else {
+            // --- FIXED: If it's a custom protocol or already has a protocol, use the query as-is. ---
+            if (query.includes('://')) {
                 url = query;
+            } else {
+                 // Prepend https:// for other likely URLs that are missing a protocol.
+                const isLocal = query.startsWith('localhost') || query.startsWith('127.0.0.1');
+                url = (isLocal ? 'http://' : 'https://') + query;
             }
         } else {
+            // Fallback to Google search for anything else.
             url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
         }
 

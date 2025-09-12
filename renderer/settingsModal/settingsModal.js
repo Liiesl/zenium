@@ -5,6 +5,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.modalAPI.close();
     });
 
+    // --- DOM Element References ---
+    const newTabUrlSelect = document.getElementById('new-tab-url-select');
+    const newTabUrlInput = document.getElementById('new-tab-url-input');
+
     // --- Load Initial Settings ---
     const settings = await window.modalAPI.getSettings();
 
@@ -16,8 +20,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // New Tab URL
-    const newTabUrlInput = document.getElementById('new-tab-url-input');
-    newTabUrlInput.value = settings.newTabUrl || '';
+    const currentNewUrl = settings.newTabUrl || 'zenium://newtab';
+    if (currentNewUrl === 'zenium://newtab') {
+        newTabUrlSelect.value = 'zenium://newtab';
+        newTabUrlInput.classList.add('hidden');
+    } else {
+        newTabUrlSelect.value = 'custom';
+        newTabUrlInput.value = currentNewUrl;
+        newTabUrlInput.classList.remove('hidden');
+    }
 
     // --- Setting Change Listeners ---
     // Theme
@@ -29,8 +40,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // New Tab URL
+    newTabUrlSelect.addEventListener('change', (event) => {
+        const selectedValue = event.target.value;
+        if (selectedValue === 'zenium://newtab') {
+            newTabUrlInput.classList.add('hidden');
+            window.modalAPI.setSetting('newTabUrl', 'zenium://newtab');
+        } else {
+            // It's 'custom'
+            newTabUrlInput.classList.remove('hidden');
+            window.modalAPI.setSetting('newTabUrl', newTabUrlInput.value);
+        }
+    });
+
     newTabUrlInput.addEventListener('input', (event) => {
-        window.modalAPI.setSetting('newTabUrl', event.target.value);
+        if (newTabUrlSelect.value === 'custom') {
+            window.modalAPI.setSetting('newTabUrl', event.target.value);
+        }
     });
 
     // --- Category Switching Logic ---

@@ -1,3 +1,4 @@
+// viewManager.js
 const { BrowserView } = require('electron');
 const path = require('path');
 const { attachKeyBlocker } = require('./keyblocker.js');
@@ -93,8 +94,16 @@ class ViewManager {
         }
     }
 
-    newTab(tabId, url = 'https://www.google.com') {
-        const view = new BrowserView();
+    newTab(tabId, url = 'zenium://newtab') {
+        // --- MODIFIED: Added webPreferences to BrowserView ---
+        const view = new BrowserView({
+            webPreferences: {
+                preload: path.join(__dirname, 'preload.js'),
+                nodeIntegration: false,
+                contextIsolation: true
+            }
+        });
+
         // Set initial bounds to 0x0 to keep it hidden until explicitly switched to.
         view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
         
@@ -111,6 +120,8 @@ class ViewManager {
         attachKeyBlocker(view.webContents);
 
         view.webContents.on('did-start-loading', () => {
+            // Don't show loading bar for our internal page
+            if (view.webContents.getURL().startsWith('zenium://')) return;
             this.isLoading[tabId] = true;
             if (this.activeTabId === tabId) {
                 this.showLoadingOverlay(tabId);
@@ -150,9 +161,11 @@ class ViewManager {
             console.error(`[ViewManager] Error [${errorCode}]: ${errorDescription}`);
         });
 
+        // --- FIXED: This function now sends the full URL regardless of the protocol ---
         const sendUrlUpdate = () => {
             if (view.webContents && !view.webContents.isDestroyed()) {
-                this.mainWindow.webContents.send('url-updated', { tabId, url: view.webContents.getURL() });
+                const currentURL = view.webContents.getURL();
+                this.mainWindow.webContents.send('url-updated', { tabId, url: currentURL });
             }
         };
 
@@ -184,10 +197,11 @@ class ViewManager {
             this.showLoadingOverlay(tabId);
         }
 
-        // Send the current URL of the newly focused tab.
+        // --- FIXED: Send the current URL of the newly focused tab, even if it's a zenium:// URL ---
         const webContents = this.views[tabId].webContents;
         if (webContents && !webContents.isDestroyed()) {
-            this.mainWindow.webContents.send('url-updated', { tabId, url: webContents.getURL() });
+            const currentURL = webContents.getURL();
+            this.mainWindow.webContents.send('url-updated', { tabId, url: currentURL });
         }
     }
 

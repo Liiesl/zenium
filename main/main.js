@@ -1,10 +1,11 @@
 // main.js
-const { app, BrowserWindow, ipcMain, screen, net } = require('electron'); // Import net
+const { app, BrowserWindow, ipcMain, screen, net } = require('electron');
 const path = require('path');
 const { ViewManager } = require('./viewManager.js');
 const { ModalManager } = require('./modalManager.js');
-const { SettingsManager } = require('./settingsManager.js'); // Import SettingsManager
+const { SettingsManager } = require('./settingsManager.js');
 const { attachKeyBlocker } = require('./keyblocker.js');
+const { registerZeniumProtocol } = require('./protocol.js');
 
 let mainWindow;
 let viewManager;
@@ -24,10 +25,12 @@ function createWindow() {
   });
 
   viewManager = new ViewManager(mainWindow);
+  // --- FIXED: Removed the extra 'new' keyword ---
   modalManager = new ModalManager(mainWindow);
-  settingsManager = new SettingsManager(); // Instantiate SettingsManager
+  settingsManager = new SettingsManager();
   
-  mainWindow.loadFile('./renderer/index.html');
+  // Correctly load index.html from the 'renderer' directory
+  mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
   mainWindow.webContents.openDevTools({ mode: 'undocked' });
 
   mainWindow.on('resize', () => viewManager.updateActiveViewBounds());
@@ -82,6 +85,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // --- CENTRALIZED PROTOCOL HANDLING ---
+  registerZeniumProtocol();
+
   createWindow();
 
   app.on('activate', () => {
@@ -110,14 +116,13 @@ ipcMain.handle('get-search-suggestions', (event, query) => {
 
     // Use a Promise to handle the async network request
     return new Promise((resolve) => {
-        const url = `https://suggestqueries.google.com/complete/search?client=chrome&q=${encodeURIComponent(query)}`;
+        const url = `https://suggestqueries.google.com/complete/search?client=chrome&hl=en&gl=us&q=${encodeURIComponent(query)}`;
         const request = net.request(url);
 
         let body = '';
         request.on('response', (response) => {
             response.on('data', (chunk) => {
                 body += chunk.toString();
-                console.log("Received chunk:", chunk.toString());
             });
             response.on('end', () => {
                 try {
@@ -236,4 +241,20 @@ ipcMain.on('maximize-window', () => {
 
 ipcMain.on('close-window', () => {
     mainWindow.close();
+});
+
+// --- NEW IPC HANDLER: Allows a view to request its own tabId ---
+ipcMain.handle('get-my-tab-id', (event) => {
+    // event.sender is the webContents that sent the message
+    const senderWebContentsId = event.sender.id;
+
+    // We need to find which tabId in our ViewManager corresponds to this webContents ID.
+    if (viewManager && viewManager.views) {
+        for (const [tabId, view] of Object.entries(viewManager.views)) {
+            if (view.webContents.id === senderWebContentsId) {
+                return tabId; // Found it! Return the tabId.
+            }
+        }
+    }
+    return null; // Return null if not found (e.g., it's not a tab view)
 });

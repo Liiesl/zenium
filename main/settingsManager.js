@@ -15,7 +15,7 @@ class SettingsManager {
     loadSettings() {
         const defaults = {
             theme: 'system',
-            newTabUrl: 'https://www.google.com'
+            newTabUrl: 'zenium://newtab'
         };
         try {
             if (fs.existsSync(SETTINGS_PATH)) {
