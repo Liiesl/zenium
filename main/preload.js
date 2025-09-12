@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // --- zenium:// protocol API ---
     getTabId: () => ipcRenderer.invoke('get-my-tab-id'),
+    getHistory: () => ipcRenderer.invoke('get-history'),
 
     // --- NEW: Search Suggestions API ---
     getSearchSuggestions: (query) => ipcRenderer.invoke('get-search-suggestions', query)

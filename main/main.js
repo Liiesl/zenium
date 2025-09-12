@@ -4,13 +4,15 @@ const path = require('path');
 const { ViewManager } = require('./viewManager.js');
 const { ModalManager } = require('./modalManager.js');
 const { SettingsManager } = require('./settingsManager.js');
+const { HistoryManager } = require('./historyManager.js'); // <-- ADD THIS
 const { attachKeyBlocker } = require('./keyblocker.js');
 const { registerZeniumProtocol } = require('./protocol.js');
 
 let mainWindow;
 let viewManager;
 let modalManager;
-let settingsManager; // Add settingsManager instance
+let settingsManager;
+let historyManager; // <-- ADD THIS
 let pollMouseInterval = null;
 
 function createWindow() {
@@ -24,8 +26,8 @@ function createWindow() {
     },
   });
 
-  viewManager = new ViewManager(mainWindow);
-  // --- FIXED: Removed the extra 'new' keyword ---
+  historyManager = new HistoryManager(); // <-- ADD THIS
+  viewManager = new ViewManager(mainWindow, historyManager); // <-- PASS TO ViewManager
   modalManager = new ModalManager(mainWindow);
   settingsManager = new SettingsManager();
   
@@ -194,6 +196,10 @@ ipcMain.on('resize-modal-self', (event, dimensions) => {
     }
 });
 
+// --- NEW IPC HANDLER for History ---
+ipcMain.handle('get-history', (event) => {
+    return historyManager.getAll();
+});
 
 ipcMain.on('sidebar-resize', (event, newWidth) => {
     if (viewManager) viewManager.updateSidebarWidth(newWidth);

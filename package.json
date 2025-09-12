@@ -5,13 +5,18 @@
   "main": "main/main.js",
   "scripts": {
     "debug": "electron . --trace-warnings",
-    "start": "electron ."
+    "start": "electron .",
+    "rebuild": ".\\node_modules\\.bin\\electron-rebuild.cmd -f -m ./node_modules/better-sqlite3"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "electron": "^38.1.0"
+    "electron": "^38.1.0",
+    "electron-rebuild": "^3.2.9"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0"
   }
 }

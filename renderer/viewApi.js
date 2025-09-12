@@ -37,4 +37,6 @@ export const viewApi = {
   // Settings
   onSettingUpdated: (callback) => window.electronAPI.onSettingUpdated(callback),
   getSettings: () => window.electronAPI.getSettings(),
+
+  getHistory: () => window.electronAPI.getHistory(),
 };

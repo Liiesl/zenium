@@ -4,8 +4,9 @@ const path = require('path');
 const { attachKeyBlocker } = require('./keyblocker.js');
 
 class ViewManager {
-    constructor(mainWindow) {
+    constructor(mainWindow, historyManager) {
         this.mainWindow = mainWindow;
+        this.historyManager = historyManager;
         this.views = {};
         this.loadingViews = {}; // To hold loading overlays
         this.isLoading = {}; // To track loading state per tab
@@ -95,7 +96,6 @@ class ViewManager {
     }
 
     newTab(tabId, url = 'zenium://newtab') {
-        // --- MODIFIED: Added webPreferences to BrowserView ---
         const view = new BrowserView({
             webPreferences: {
                 preload: path.join(__dirname, 'preload.js'),
@@ -104,15 +104,12 @@ class ViewManager {
             }
         });
 
-        // Set initial bounds to 0x0 to keep it hidden until explicitly switched to.
         view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
         
-        // Add the content view first
         this.mainWindow.addBrowserView(view);
         this.views[tabId] = view;
-        this.isLoading[tabId] = false; // Initialize loading state
+        this.isLoading[tabId] = false;
 
-        // Create the loading view (which will be added on top)
         this.createLoadingView(tabId);
         
         view.webContents.loadURL(url);
@@ -120,7 +117,6 @@ class ViewManager {
         attachKeyBlocker(view.webContents);
 
         view.webContents.on('did-start-loading', () => {
-            // Don't show loading bar for our internal page
             if (view.webContents.getURL().startsWith('zenium://')) return;
             this.isLoading[tabId] = true;
             if (this.activeTabId === tabId) {
@@ -132,6 +128,17 @@ class ViewManager {
             this.isLoading[tabId] = false;
             if (this.activeTabId === tabId) {
                 this.finishLoading(tabId);
+            }
+
+            // --- ADDED: Record history here to ensure the title is correct ---
+            if (view.webContents && !view.webContents.isDestroyed()) {
+                const pageUrl = view.webContents.getURL();
+                const pageTitle = view.webContents.getTitle();
+
+                // Don't add internal or blank pages to history
+                if (!pageUrl.startsWith('zenium://') && pageUrl !== 'about:blank') {
+                    this.historyManager.add({ url: pageUrl, title: pageTitle });
+                }
             }
         });
 
@@ -161,7 +168,6 @@ class ViewManager {
             console.error(`[ViewManager] Error [${errorCode}]: ${errorDescription}`);
         });
 
-        // --- FIXED: This function now sends the full URL regardless of the protocol ---
         const sendUrlUpdate = () => {
             if (view.webContents && !view.webContents.isDestroyed()) {
                 const currentURL = view.webContents.getURL();
@@ -169,7 +175,10 @@ class ViewManager {
             }
         };
 
-        view.webContents.on('did-navigate', sendUrlUpdate);
+        view.webContents.on('did-navigate', () => {
+            sendUrlUpdate();
+            // --- REMOVED: History logic was moved from here ---
+        });
         view.webContents.on('did-navigate-in-page', sendUrlUpdate);
     }
 
@@ -178,10 +187,8 @@ class ViewManager {
 
         this.activeTabId = tabId;
 
-        // Bring the active view to the top so it receives input.
         this.mainWindow.setTopBrowserView(this.views[tabId]);
 
-        // Hide all other views and their overlays.
         for (const id in this.views) {
             if (id !== this.activeTabId) {
                 this.views[id].setBounds({ x: 0, y: 0, width: 0, height: 0 });
@@ -189,15 +196,12 @@ class ViewManager {
             }
         }
         
-        // Position the active view correctly.
         this.updateActiveViewBounds();
 
-        // If the newly active tab is still loading, ensure its overlay is visible.
         if (this.isLoading[tabId]) {
             this.showLoadingOverlay(tabId);
         }
 
-        // --- FIXED: Send the current URL of the newly focused tab, even if it's a zenium:// URL ---
         const webContents = this.views[tabId].webContents;
         if (webContents && !webContents.isDestroyed()) {
             const currentURL = webContents.getURL();
@@ -283,7 +287,6 @@ class ViewManager {
         };
         view.setBounds(newBounds);
 
-        // If the loading bar should be visible, update its position.
         if (this.isLoading[this.activeTabId]) {
             this.showLoadingOverlay(this.activeTabId);
         }
@@ -311,7 +314,6 @@ class ViewManager {
             
             view.setBounds(newBounds);
 
-            // Also move the loading bar with the animation
             if (this.isLoading[this.activeTabId]) {
                 this.showLoadingOverlay(this.activeTabId);
             }
