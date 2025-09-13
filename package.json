@@ -1,6 +1,6 @@
 {
   "name": "zenium",
-  "version": "0.1.1",
+  "version": "0.1.1-alpha",
   "description": "",
   "main": "main/main.js",
   "scripts": {
