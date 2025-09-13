@@ -1,22 +1,57 @@
 {
-  "name": "zenmium",
+  "name": "zenium",
   "version": "1.0.0",
   "description": "",
   "main": "main/main.js",
   "scripts": {
     "debug": "electron . --trace-warnings",
     "start": "electron .",
-    "rebuild": ".\\node_modules\\.bin\\electron-rebuild.cmd -f -m ./node_modules/better-sqlite3"
+    "rebuild": ".\\node_modules\\.bin\\electron-rebuild.cmd -f -m ./node_modules/better-sqlite3",
+    "dist": "electron-builder"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Liiesl/zenium.git"
+  },
   "devDependencies": {
     "electron": "^38.1.0",
+    "electron-builder": "^26.0.12",
     "electron-rebuild": "^3.2.9"
   },
   "dependencies": {
-    "better-sqlite3": "^12.2.0"
+    "better-sqlite3": "^12.2.0",
+    "electron-updater": "^6.3.0"
+  },
+  "build": {
+    "appId": "com.github.liiesl.zenium",
+    "productName": "ZenIUM",
+    "files": [
+      "main/**/*",
+      "renderer/**/*",
+      "pages/**/*",
+      "package.json"
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Liiesl",
+        "repo": "zenium"
+      }
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "icons/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
