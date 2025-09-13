@@ -14,6 +14,7 @@ export class SettingsModal {
                     <ul>
                         <li class="settings-category active" data-page="general-page">General</li>
                         <li class="settings-category" data-page="appearance-page">Appearance</li>
+                        <li class="settings-category" data-page="updates-page">Updates</li>
                     </ul>
                 </div>
                 <div id="settings-main">
@@ -43,8 +44,26 @@ export class SettingsModal {
                             </div>
                         </div>
                     </div>
-                </div>
+                    <!-- Updates Page -->
+                    <div id="updates-page" class="settings-page">
+                        <h2>Application Updates</h2>
+                        <div class="setting-item">
+                           <button id="check-update-btn">Check for Updates</button>
+                           <div id="update-status-message"></div>
+                           <div id="update-info-container" class="hidden">
+                                <p>A new version is available!</p>
+                                <ul>
+                                    <li><strong>Version:</strong> <span id="update-version"></span></li>
+                                    <li><strong>Size:</strong> <span id="update-size"></span></li>
+                                </ul>
+                                <button id="download-update-btn">Download Update</button>
+                           </div>
+                           <div id="download-progress-container" class="hidden"></div>
+                           <button id="install-relaunch-btn" class="hidden">Restart and Install Update</button>
+                        </div>
+                    </div>                
                 <button id="close-modal-btn" class="close-modal-btn">&times;</button>
+                </div>
             </div>
         `;
 
