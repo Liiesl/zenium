@@ -1,36 +1,68 @@
 // main/sessionManager.js
-const { app, ipcMain } = require('electron'); // --- KEY CHANGE: require ipcMain ---
+const { app, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 const SESSION_PATH = path.join(app.getPath('userData'), 'session.json');
 
 class SessionManager {
-    // --- KEY CHANGE: This is now an async function ---
     async saveSession(viewManager, mainWindow) {
         if (!viewManager || !mainWindow) {
             console.error('[SessionManager] saveSession called without viewManager or mainWindow.');
             return;
         }
 
-        // --- KEY CHANGE: Request the visual tab order from the renderer ---
-        mainWindow.webContents.send('get-tab-order');
-        const tabOrder = await new Promise(resolve => {
-            ipcMain.once('tab-order', (event, order) => resolve(order));
-        });
+        // --- KEY CHANGE: Helper function for robust IPC with timeout ---
+        const ipcPromiseWithTimeout = (requestChannel, responseChannel, timeout = 2000) => {
+            return new Promise((resolve, reject) => {
+                const timer = setTimeout(() => {
+                    // Clean up the listener to prevent memory leaks
+                    ipcMain.removeListener(responseChannel, listener);
+                    reject(new Error(`IPC request '${requestChannel}' timed out after ${timeout}ms.`));
+                }, timeout);
+
+                const listener = (event, data) => {
+                    clearTimeout(timer);
+                    resolve(data);
+                };
+                
+                ipcMain.once(responseChannel, listener);
+                mainWindow.webContents.send(requestChannel);
+            });
+        };
+
+        let tabOrder = [];
+        let tabStates = {};
+        
+        try {
+            // --- KEY CHANGE: Use the new robust promise function ---
+            console.log('[SessionManager] Requesting tab order from renderer...');
+            tabOrder = await ipcPromiseWithTimeout('get-tab-order', 'tab-order');
+            console.log('[SessionManager] Received tab order:', tabOrder);
+
+            console.log('[SessionManager] Requesting tab states from renderer...');
+            tabStates = await ipcPromiseWithTimeout('get-tab-states', 'tab-states');
+            console.log('[SessionManager] Received tab states:', tabStates);
+
+        } catch (error) {
+            console.error('[SessionManager] Failed to get data from renderer for session save:', error.message);
+            // Even if we fail, we should proceed to save what we can, rather than hanging.
+            // tabOrder and tabStates will be empty, which is a safe fallback.
+        }
+
 
         const tabs = Object.entries(viewManager.views).reduce((acc, [tabId, view]) => {
-            // ... (rest of the logic is the same)
             try {
                 if (!view || !view.webContents || view.webContents.isDestroyed()) {
                     return acc;
                 }
 
                 const navigationHistory = view.webContents.navigationHistory;
-                // --- KEY CHANGE: Get the full history entry objects, not just URLs ---
                 const historyEntries = navigationHistory.getAllEntries();
                 const activeIndex = navigationHistory.getActiveIndex();
                 const url = view.webContents.getURL();
+                
+                const tabType = tabStates[tabId] || 'regular';
 
                 if (historyEntries.length > 0) {
                     acc.push({
@@ -38,9 +70,9 @@ class SessionManager {
                         url: url,
                         history: {
                             index: activeIndex,
-                            // --- KEY CHANGE: Store the full entries array ---
                             entries: historyEntries,
                         },
+                        type: tabType, 
                     });
                 }
 
@@ -53,14 +85,14 @@ class SessionManager {
 
         const session = {
             activeTabId: viewManager.activeTabId,
-            // --- KEY CHANGE: Store the visual order of tabs ---
             tabOrder: tabOrder,
             tabs,
         };
 
         try {
-            console.log('[SessionManager] Saving session state:', JSON.stringify(session, null, 2));
+            console.log('[SessionManager] Saving session state to disk...');
             fs.writeFileSync(SESSION_PATH, JSON.stringify(session, null, 2));
+            console.log('[SessionManager] Session state saved.');
         } catch (error) {
             console.error('Error writing session file:', error);
         }
@@ -70,10 +102,8 @@ class SessionManager {
         try {
             if (fs.existsSync(SESSION_PATH)) {
                 const sessionData = fs.readFileSync(SESSION_PATH, 'utf-8');
-                console.log('[SessionManager] Loaded session data from file:', sessionData);
-                const parsedData = JSON.parse(sessionData);
-                console.log('[SessionManager] Parsed session object:', parsedData);
-                return parsedData;
+                console.log('[SessionManager] Loaded session data from file.');
+                return JSON.parse(sessionData);
             }
         } catch (error) {
             console.error('Error loading session:', error);
@@ -88,9 +118,8 @@ class SessionManager {
             return;
         }
 
-        console.log('[SessionManager] Starting restoreSession...');
+        console.log('[SessionManager] Starting session restore...');
 
-        // --- KEY CHANGE: Create a map for quick lookups and sort tabs based on the saved order ---
         const tabMap = new Map(session.tabs.map(tab => [tab.tabId, tab]));
         const orderedTabs = (session.tabOrder || []).map(tabId => tabMap.get(tabId)).filter(Boolean);
 
@@ -103,17 +132,18 @@ class SessionManager {
 
 
         orderedTabs.forEach((tab) => {
-            console.log(`[SessionManager] Sending 'create-tab' event to renderer for tabId: ${tab.tabId}`);
+            console.log(`[SessionManager] Restoring tab: ${tab.tabId} with type: ${tab.type}`);
             mainWindow.webContents.send('create-tab', {
                 tabId: tab.tabId,
                 url: tab.url,
                 history: tab.history,
+                type: tab.type,
             });
         });
 
         setTimeout(() => {
             if (session.activeTabId) {
-                console.log(`[SessionManager] Sending 'switch-tab' event to renderer for active tabId: ${session.activeTabId}`);
+                console.log(`[SessionManager] Setting active tab to: ${session.activeTabId}`);
                 mainWindow.webContents.send('switch-tab', session.activeTabId);
             }
         }, 100);

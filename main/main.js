@@ -16,6 +16,8 @@ let settingsManager;
 let historyManager;
 let sessionManager;
 let pollMouseInterval = null;
+// --- KEY CHANGE: Flag to ensure the save process only runs once ---
+let isQuitting = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -39,10 +41,31 @@ function createWindow() {
 
   mainWindow.on('resize', () => viewManager.updateActiveViewBounds());
 
-  // --- KEY CHANGE: The 'close' event handler is now async ---
-  mainWindow.on('close', async () => {
-    // --- KEY CHANGE: Pass mainWindow to saveSession ---
-    await sessionManager.saveSession(viewManager, mainWindow);
+  // --- KEY CHANGE: The entire shutdown logic is now handled here ---
+  mainWindow.on('close', async (event) => {
+    // If we're not already in the process of quitting...
+    if (!isQuitting) {
+      console.log('[main.js] Window "close" event intercepted.');
+      
+      // 1. Prevent the window from closing immediately. This keeps the renderer alive.
+      event.preventDefault();
+      
+      // 2. Set the flag to prevent this code from running again.
+      isQuitting = true;
+
+      try {
+        // 3. Perform the asynchronous session save while the renderer is still available.
+        console.log('[main.js] Starting session save from "close" event.');
+        await sessionManager.saveSession(viewManager, mainWindow);
+        console.log('[main.js] Session save complete.');
+      } catch (err) {
+        console.error('[main.js] An error occurred during session saving:', err);
+      } finally {
+        // 4. Now that saving is done, quit the application for real.
+        console.log('[main.js] Proceeding with application quit.');
+        app.quit();
+      }
+    }
   });
   
   const startPolling = () => {
@@ -96,9 +119,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   registerZeniumProtocol();
-
   createWindow();
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -112,7 +133,7 @@ app.whenReady().then(() => {
   ipcMain.on('renderer-ready', () => {
     console.log('[main.js] Received renderer-ready signal.');
     const savedSession = sessionManager.loadSession();
-    if (savedSession && savedSession.tabs.length > 0) {
+    if (savedSession && savedSession.tabs && savedSession.tabs.length > 0) {
       console.log(`[main.js] Found ${savedSession.tabs.length} tabs to restore.`);
       sessionManager.restoreSession(viewManager, mainWindow, savedSession);
     } else {
@@ -121,25 +142,30 @@ app.whenReady().then(() => {
     }
   });
 });
+
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
 });
 
-// --- KEY CHANGE: Add a handler for the renderer to send its tab order ---
+// These listeners are now guaranteed to have a live renderer to talk to.
 ipcMain.on('tab-order', (event, order) => {
     // This simply forwards the event to the promise in saveSession
 });
-
-// --- KEY CHANGE: The 'before-quit' handler is no longer needed for session saving. ---
-// It can be removed or left for other potential cleanup tasks.
-app.on('before-quit', () => {
-  console.log('Application is quitting.');
+ipcMain.on('tab-states', (event, states) => {
+    // This forwards the tab states to the promise in saveSession
 });
 
+// --- KEY CHANGE: This is no longer needed for session saving and can be removed ---
+// It was the source of the race condition.
+/*
+app.on('before-quit', async (event) => {
+  // ... removed ...
+});
+*/
 
-// --- IPC handlers remain the same ---
+// --- All other IPC handlers remain the same ---
 
 ipcMain.handle('get-search-suggestions', (event, query) => {
     if (!query) {

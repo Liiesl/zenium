@@ -199,9 +199,66 @@ body, html {
     background-color: var(--hover-color);
 }
 
-#pinned-tabs-placeholder {
-    min-height: 10px;
+/* --- KEY CHANGE: Styles for Essential and Pinned Tabs --- */
+#essential-tabs-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+    padding: 10px 5px;
+    max-width: 186px; /* (40px * 3) + (8px * 2) + (5px * 2) approx */
 }
+
+#pinned-tabs-list {
+    min-height: 10px; /* Minimal height when empty */
+    flex-shrink: 0; /* Prevent shrinking */
+    overflow-y: auto;
+    padding: 5px;
+}
+
+#tabs-list {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 5px;
+}
+
+
+/* Make #tabs-list not grow when there are pinned tabs, to prevent double scrollbars */
+#pinned-tabs-list + .divider + #tabs-list {
+    flex-grow: 1;
+}
+
+#essential-tabs-list .tab {
+    padding: 0;
+    height: 50px;
+    width: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative; /* --- MODIFICATION: Added for positioning the close button --- */
+    border: 2px solid var(--border-color);
+}
+
+#essential-tabs-list .tab .tab-title { /* --- MODIFICATION: removed .close-tab-btn from this rule --- */
+    display: none;
+}
+
+/* --- MODIFICATION: New rules for the essential tab close button --- */
+#essential-tabs-list .tab .close-tab-btn {
+    display: block !important;
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    opacity: 1;
+}
+
+#essential-tabs-list .tab .tab-favicon {
+    margin: 0;
+    width: 20px;
+    height: 20px;
+    display: block !important;
+}
+/* --- End Key Change --- */
+
 
 .divider {
     height: 1px;
@@ -225,12 +282,6 @@ body, html {
 #omnibox-placeholder-btn:hover {
     background-color: var(--hover-color);
     border-color: var(--accent-color);
-}
-
-#tabs-list {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 5px;
 }
 
 .tab {

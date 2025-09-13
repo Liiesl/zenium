@@ -2,19 +2,12 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  // --- ADD THIS TO SEND THE "READY" SIGNAL ---
   rendererReady: () => ipcRenderer.send('renderer-ready'),
-  
-  // --- ADD THIS LISTENER FOR WHEN NO SESSION EXISTS ---
   onInitialTab: (callback) => ipcRenderer.on('create-initial-tab', (_event) => callback()),
-
-  // Listeners for session restore
   onCreateTab: (callback) => ipcRenderer.on('create-tab', (_event, value) => callback(value)),
   onSwitchTab: (callback) => ipcRenderer.on('switch-tab', (_event, value) => callback(value)),
-  // --- FIX: Add the new listener for when a restored tab is fully ready ---
   onTabRestored: (callback) => ipcRenderer.on('tab-restored', (_event, value) => callback(value)),
   
-  // Tab/View Management
   newTab: (tabId, url) => ipcRenderer.send('new-tab', { tabId, url }),
   restoreTab: (tabId, url, history) => {
     ipcRenderer.send('restore-tab', { tabId, url, history });
@@ -29,7 +22,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onURLUpdated: (callback) => ipcRenderer.on('url-updated', (_event, value) => callback(value)),
   onFaviconUpdated: (callback) => ipcRenderer.on('update-tab-favicon', (_event, value) => callback(value)),
     
-  // ... rest of the API remains the same
   minimizeWindow: () => ipcRenderer.send('minimize-window'),
   maximizeWindow: () => ipcRenderer.send('maximize-window'),
   closeWindow: () => ipcRenderer.send('close-window'),
@@ -46,7 +38,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getHistory: () => ipcRenderer.invoke('get-history'),
   getSearchSuggestions: (query) => ipcRenderer.invoke('get-search-suggestions', query),
 
-  // --- KEY CHANGE: Add the missing functions for tab reordering ---
   onGetTabOrder: (callback) => ipcRenderer.on('get-tab-order', (event, ...args) => callback(...args)),
   sendTabOrder: (order) => ipcRenderer.send('tab-order', order),
+
+  // --- KEY CHANGE: Add listeners for getting tab states ---
+  onGetTabStates: (callback) => ipcRenderer.on('get-tab-states', (event) => callback()),
+  sendTabStates: (states) => ipcRenderer.send('tab-states', states),
 });
