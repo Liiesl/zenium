@@ -45,14 +45,6 @@ export const viewApi = {
   // Settings
   onSettingUpdated: (callback) => window.electronAPI.onSettingUpdated(callback),
   getSettings: () => window.electronAPI.getSettings(),
-  getHistory: () => window.electronAPI.getHistory(),
 
-  // Update Management
-  checkForUpdate: () => window.electronAPI.checkForUpdate(),
-  startDownload: () => window.electronAPI.startDownload(),
-  quitAndInstall: () => window.electronAPI.quitAndInstall(),
-  onUpdateInfoAvailable: (callback) => window.electronAPI.onUpdateInfoAvailable(callback),
-  onUpdateNotAvailable: (callback) => window.electronAPI.onUpdateNotAvailable(callback),
-  onUpdateDownloadProgress: (callback) => window.electronAPI.onUpdateDownloadProgress(callback),
-  onUpdateDownloadComplete: (callback) => window.electronAPI.onUpdateDownloadComplete(callback),
+  getHistory: () => window.electronAPI.getHistory(),
 };

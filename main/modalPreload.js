@@ -42,13 +42,4 @@ contextBridge.exposeInMainWorld('modalAPI', {
 
 
   unloadTab: (tabId) => ipcRenderer.send('unload-tab', tabId),
-
-  // --- KEY CHANGE: Manual Update API ---
-  checkForUpdate: () => ipcRenderer.send('check-for-update'),
-  startDownload: () => ipcRenderer.send('start-download'),
-  quitAndInstall: () => ipcRenderer.send('quit-and-install'),
-  onUpdateInfoAvailable: (callback) => ipcRenderer.on('update-info-available', (_event, value) => callback(value)),
-  onUpdateNotAvailable: (callback) => ipcRenderer.on('update-not-available', (_event) => callback()),
-  onUpdateDownloadProgress: (callback) => ipcRenderer.on('update-download-progress', (_event, value) => callback(value)),
-  onUpdateDownloadComplete: (callback) => ipcRenderer.on('update-download-complete', (_event) => callback()),
 });

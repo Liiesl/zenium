@@ -190,7 +190,7 @@ class ModalManager {
         });
 
         // Open DevTools for the modal for debugging
-        modalView.webContents.openDevTools({ mode: 'undocked' });
+        // modalView.webContents.openDevTools({ mode: 'undocked' });
 
         // *** CHANGE: Wait for the modal content to load, then focus it ***
         modalView.webContents.on('did-finish-load', () => {

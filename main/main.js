@@ -1,7 +1,6 @@
 // main.js
-const { app, BrowserWindow, ipcMain, screen, net, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, net } = require('electron');
 const path = require('path');
-const { autoUpdater } = require('electron-updater');
 const { ViewManager } = require('./viewManager.js');
 const { ModalManager } = require('./modalManager.js');
 const { SettingsManager } = require('./settingsManager.js');
@@ -10,11 +9,6 @@ const { HistoryManager } = require('./historyManager.js');
 const { attachKeyBlocker } = require('./keyblocker.js');
 const { registerZeniumProtocol } = require('./protocol.js');
 
-autoUpdater.autoDownload = false;
-autoUpdater.autoInstallOnAppQuit = false;
-
-const formatBytes = (bytes, decimals = 2) => bytes === 0 ? '0 Bytes' : (decimals = decimals < 0 ? 0 : decimals, `${parseFloat((bytes / Math.pow(1024, 2)).toFixed(decimals))} MB`);
-
 let mainWindow;
 let modalManager;
 let viewManager;
@@ -22,9 +16,8 @@ let settingsManager;
 let historyManager;
 let sessionManager;
 let pollMouseInterval = null;
+// --- KEY CHANGE: Flag to ensure the save process only runs once ---
 let isQuitting = false;
-let updateReadyToInstall = false;
-let isQuittingForUpdate = false;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -48,38 +41,30 @@ function createWindow() {
 
   mainWindow.on('resize', () => viewManager.updateActiveViewBounds());
 
-  // --- KEY CHANGE: The shutdown logic is simplified to auto-install on quit ---
+  // --- KEY CHANGE: The entire shutdown logic is now handled here ---
   mainWindow.on('close', async (event) => {
-    // If we're already in the process of quitting, do nothing to prevent loops.
-    if (isQuittingForUpdate || isQuitting) {
-      return;
-    }
-    
-    // Prevent the window from closing immediately.
-    event.preventDefault();
+    // If we're not already in the process of quitting...
+    if (!isQuitting) {
+      console.log('[main.js] Window "close" event intercepted.');
+      
+      // 1. Prevent the window from closing immediately. This keeps the renderer alive.
+      event.preventDefault();
+      
+      // 2. Set the flag to prevent this code from running again.
+      isQuitting = true;
 
-    // If an update has been downloaded and deferred, install it now.
-    if (updateReadyToInstall) {
-      console.log('[main.js] An update is ready. Proceeding with quit and install.');
-      // Set the flag to prevent other quit logic from running.
-      isQuittingForUpdate = true;
-      // The updater will handle shutting down the app. No need to save the session.
-      autoUpdater.quitAndInstall();
-      return; // Stop here.
-    }
-    
-    // --- Standard shutdown procedure if no update is pending ---
-    isQuitting = true;
-
-    try {
-      console.log('[main.js] Starting session save from "close" event.');
-      await sessionManager.saveSession(viewManager, mainWindow);
-      console.log('[main.js] Session save complete.');
-    } catch (err) {
-      console.error('[main.js] An error occurred during session saving:', err);
-    } finally {
-      console.log('[main.js] Proceeding with application quit.');
-      app.quit();
+      try {
+        // 3. Perform the asynchronous session save while the renderer is still available.
+        console.log('[main.js] Starting session save from "close" event.');
+        await sessionManager.saveSession(viewManager, mainWindow);
+        console.log('[main.js] Session save complete.');
+      } catch (err) {
+        console.error('[main.js] An error occurred during session saving:', err);
+      } finally {
+        // 4. Now that saving is done, quit the application for real.
+        console.log('[main.js] Proceeding with application quit.');
+        app.quit();
+      }
     }
   });
   
@@ -164,92 +149,21 @@ app.on('window-all-closed', () => {
   }
 });
 
+// These listeners are now guaranteed to have a live renderer to talk to.
 ipcMain.on('tab-order', (event, order) => {
     // This simply forwards the event to the promise in saveSession
 });
-
-ipcMain.on('check-for-update', () => {
-  autoUpdater.forceDevUpdateConfig = true;
-  console.log('[main.js] User requested update check.');
-  autoUpdater.checkForUpdates();
-});
-
-ipcMain.on('start-download', () => {
-  console.log('[main.js] User requested update download.');
-  autoUpdater.downloadUpdate();
-});
-
-ipcMain.on('quit-and-install', () => {
-  console.log('[main.js] User requested quit and install.');
-  isQuittingForUpdate = true;
-  autoUpdater.quitAndInstall();
-});
-
-autoUpdater.on('update-available', (info) => {
-    console.log('[main.js] Update available:', info);
-    const updateInfo = {
-        version: info.version,
-        size: info.files[0] ? formatBytes(info.files[0].size) : 'N/A'
-    };
-    if (mainWindow) mainWindow.webContents.send('update-info-available', updateInfo);
-    if (modalManager && modalManager.modals) {
-        for (const [, view] of modalManager.modals.entries()) {
-            if (view && view.webContents) view.webContents.send('update-info-available', updateInfo);
-        }
-    }
-});
-
-autoUpdater.on('update-not-available', (info) => {
-    console.log('[main.js] No update available.');
-    if (mainWindow) mainWindow.webContents.send('update-not-available');
-    if (modalManager && modalManager.modals) {
-        for (const [, view] of modalManager.modals.entries()) {
-            if (view && view.webContents) view.webContents.send('update-not-available');
-        }
-    }
-});
-
-autoUpdater.on('download-progress', (progressObj) => {
-    console.log(`[main.js] Download speed: ${progressObj.bytesPerSecond} - Downloaded ${progressObj.percent}%`);
-    if (mainWindow) mainWindow.webContents.send('update-download-progress', progressObj);
-    if (modalManager && modalManager.modals) {
-        for (const [, view] of modalManager.modals.entries()) {
-            if (view && view.webContents) view.webContents.send('update-download-progress', progressObj);
-        }
-    }
-});
-
-autoUpdater.on('update-downloaded', async (info) => {
-    console.log('[main.js] Update downloaded.');
-    updateReadyToInstall = true;
-    
-    if (mainWindow) mainWindow.webContents.send('update-download-complete');
-    if (modalManager && modalManager.modals) {
-        for (const [, view] of modalManager.modals.entries()) {
-            if (view && view.webContents) view.webContents.send('update-download-complete');
-        }
-    }
-    
-    const dialogOpts = {
-        type: 'info',
-        buttons: ['Restart and Install', 'Later'],
-        title: 'Update Ready to Install',
-        message: `Version ${info.version} has been downloaded.`,
-        detail: 'Do you want to restart and install it now?'
-    };
-
-    const { response } = await dialog.showMessageBox(mainWindow, dialogOpts);
-
-    if (response === 0) { // User chose "Restart and Install"
-        isQuittingForUpdate = true;
-        autoUpdater.quitAndInstall();
-    }
-});
-
-
 ipcMain.on('tab-states', (event, states) => {
     // This forwards the tab states to the promise in saveSession
 });
+
+// --- KEY CHANGE: This is no longer needed for session saving and can be removed ---
+// It was the source of the race condition.
+/*
+app.on('before-quit', async (event) => {
+  // ... removed ...
+});
+*/
 
 // --- All other IPC handlers remain the same ---
 
@@ -344,6 +258,7 @@ ipcMain.on('close-tab', (event, tabId) => {
     if (viewManager) viewManager.closeTab(tabId);
 });
 
+// --- KEY CHANGE: Add a handler to unload a tab ---
 ipcMain.on('unload-tab', (event, tabId) => {
     if (viewManager) viewManager.unloadTab(tabId);
 });

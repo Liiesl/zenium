@@ -17,7 +17,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   restoreTab: (tabId, url, history) => {
     ipcRenderer.send('restore-tab', { tabId, url, history });
   },
-
+  
   unloadTab: (tabId) => ipcRenderer.send('unload-tab', tabId),
 
   switchTab: (tabId) => ipcRenderer.send('switch-tab', tabId),
@@ -52,13 +52,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // --- KEY CHANGE: Add listeners for getting tab states ---
   onGetTabStates: (callback) => ipcRenderer.on('get-tab-states', (event) => callback()),
   sendTabStates: (states) => ipcRenderer.send('tab-states', states),
-
-  // --- KEY CHANGE: Manual Update API ---
-  checkForUpdate: () => ipcRenderer.send('check-for-update'),
-  startDownload: () => ipcRenderer.send('start-download'),
-  quitAndInstall: () => ipcRenderer.send('quit-and-install'),
-  onUpdateInfoAvailable: (callback) => ipcRenderer.on('update-info-available', (_event, value) => callback(value)),
-  onUpdateNotAvailable: (callback) => ipcRenderer.on('update-not-available', (_event) => callback()),
-  onUpdateDownloadProgress: (callback) => ipcRenderer.on('update-download-progress', (_event, value) => callback(value)),
-  onUpdateDownloadComplete: (callback) => ipcRenderer.on('update-download-complete', (_event) => callback()),
 });
