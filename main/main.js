@@ -177,7 +177,7 @@ ipcMain.on('tab-order', (event, order) => {
 });
 
 ipcMain.on('check-for-update', () => {
-  autoUpdater.forceDevUpdateConfig = true;
+  // autoUpdater.forceDevUpdateConfig = true;
   console.log('[main.js] User requested update check.');
   autoUpdater.checkForUpdates();
 });
