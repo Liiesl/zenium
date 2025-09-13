@@ -1,6 +1,6 @@
 // sidebar.js
 import { viewApi } from './viewApi.js';
-import { URLInput } from './urlInput/index.js'; // Import the new URLInput
+import { URLInput } from './urlInput/index.js';
 
 export class Sidebar {
     constructor(settingsModal, initialSettings) {
@@ -26,14 +26,43 @@ export class Sidebar {
                 this.urlInput.updateURL(url);
             }
         });
-
-        viewApi.onTabRestored(({ tabId, title, url, faviconUrl }) => {
+        viewApi.onTabRestored(({ tabId, title, url }) => {
             this.updateTabTitle(tabId, title);
-            if (faviconUrl) {
-                this.updateTabFavicon(tabId, faviconUrl);
-            }
             if (tabId === this.activeTabId) {
                 this.urlInput.updateURL(url);
+            }
+        });
+        viewApi.onTabUnloaded((tabId) => {
+            const tabElement = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
+            if (tabElement) {
+                tabElement.classList.add('unloaded');
+                // --- KEY CHANGE: Update button for persistent tabs ---
+                const isPersistent = tabElement.closest('#pinned-tabs-list, #essential-tabs-list');
+                if (isPersistent) {
+                    const button = tabElement.querySelector('button');
+                    if (button) {
+                        button.textContent = 'x';
+                        button.dataset.action = 'close';
+                        button.className = 'close-tab-btn';
+                    }
+                }
+            }
+        });
+
+        viewApi.onTabLoaded((tabId) => {
+            const tabElement = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
+            if (tabElement) {
+                tabElement.classList.remove('unloaded');
+                // --- KEY CHANGE: Update button for persistent tabs ---
+                const isPersistent = tabElement.closest('#pinned-tabs-list, #essential-tabs-list');
+                if (isPersistent) {
+                    const button = tabElement.querySelector('button');
+                    if (button) {
+                        button.textContent = '-';
+                        button.dataset.action = 'unload';
+                        button.className = 'unload-tab-btn';
+                    }
+                }
             }
         });
 
@@ -42,14 +71,10 @@ export class Sidebar {
                 this.settings[key] = value;
             }
         });
-        
-        window.electronAPI.onGetTabOrder((event) => {
-            const tabElements = Array.from(this.tabsList.querySelectorAll('.tab'));
-            const tabOrder = tabElements.map(tab => tab.dataset.tabId);
+        window.electronAPI.onGetTabOrder(() => {
+            const tabOrder = Array.from(this.tabsList.querySelectorAll('.tab')).map(t => t.dataset.tabId);
             window.electronAPI.sendTabOrder(tabOrder);
         });
-
-        // --- KEY CHANGE: Add listener to get tab states for session saving ---
         window.electronAPI.onGetTabStates(() => {
             const states = {};
             this.essentialTabsList.querySelectorAll('.tab').forEach(t => states[t.dataset.tabId] = 'essential');
@@ -62,8 +87,8 @@ export class Sidebar {
     updateTabFavicon(tabId, faviconUrl) {
         const faviconElement = document.querySelector(`.tab[data-tab-id="${tabId}"] .tab-favicon`);
         if (faviconElement) {
-            faviconElement.src = faviconUrl;
-            faviconElement.style.display = 'inline';
+            faviconElement.src = faviconUrl || '';
+            faviconElement.style.display = faviconUrl ? 'inline' : 'none';
         }
     }
 
@@ -78,21 +103,42 @@ export class Sidebar {
         }
     }
 
-    _createTabElement(tabId, title = 'New Tab') {
+    // --- KEY CHANGE: Create unload or close button based on tab type and state ---
+    _createTabElement(tabId, title = 'New Tab', faviconUrl = null, type = 'regular', isUnloaded = false) {
         const tabElement = document.createElement('div');
         tabElement.className = 'tab';
         tabElement.dataset.tabId = tabId;
         tabElement.draggable = true;
+        
+        const faviconDisplay = faviconUrl ? 'inline' : 'none';
+        const faviconSrc = faviconUrl || '';
+
+        let buttonAction = 'close';
+        let buttonIcon = 'x';
+        let buttonClass = 'close-tab-btn';
+
+        const isPersistent = type === 'pinned' || type === 'essential';
+        if (isPersistent && !isUnloaded) {
+            buttonAction = 'unload';
+            buttonIcon = '-';
+            buttonClass = 'unload-tab-btn';
+        }
+
         tabElement.innerHTML = `
-            <img class="tab-favicon" src="" style="display: none;" />
+            <img class="tab-favicon" src="${faviconSrc}" style="display: ${faviconDisplay};" />
             <span class="tab-title">${title}</span>
-            <button class="close-tab-btn">x</button>
+            <button class="${buttonClass}" data-action="${buttonAction}">${buttonIcon}</button>
         `;
 
-        const closeBtn = tabElement.querySelector('.close-tab-btn');
-        closeBtn.addEventListener('click', (e) => {
+        const actionBtn = tabElement.querySelector('button');
+        actionBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            this.closeTab(tabId);
+            const action = actionBtn.dataset.action;
+            if (action === 'close') {
+                this.closeTab(tabId);
+            } else if (action === 'unload') {
+                this.unloadTab(tabId);
+            }
         });
 
         tabElement.addEventListener('click', () => {
@@ -117,7 +163,6 @@ export class Sidebar {
         return tabElement;
     }
 
-
     createTab() {
         const tabId = `tab-${Date.now()}`;
         const tabElement = this._createTabElement(tabId);
@@ -133,9 +178,10 @@ export class Sidebar {
         this.switchTab(tabId);
     }
     
-    // --- KEY CHANGE: Accept 'type' to place the tab in the correct list ---
-    createRestoredTab({ tabId, url, history, type = 'regular' }) {
-        const tabElement = this._createTabElement(tabId, 'Loading...');
+    createRestoredTab({ tabId, url, history, type = 'regular', faviconUrl }) {
+        const initialTitle = history?.entries[history.index]?.title || 'Loading...';
+        // --- KEY CHANGE: Pass tab type and loaded state to element creator ---
+        const tabElement = this._createTabElement(tabId, initialTitle, faviconUrl, type, false);
         
         switch (type) {
             case 'essential':
@@ -150,6 +196,23 @@ export class Sidebar {
         }
 
         viewApi.restoreTab(tabId, url, history);
+    }
+
+    createUnloadedTab({ tabId, title, type = 'regular', faviconUrl }) {
+        // --- KEY CHANGE: Pass tab type and unloaded state to element creator ---
+        const tabElement = this._createTabElement(tabId, title, faviconUrl, type, true);
+        tabElement.classList.add('unloaded');
+        
+        switch (type) {
+            case 'essential':
+                this.essentialTabsList.appendChild(tabElement);
+                break;
+            case 'pinned':
+                this.pinnedTabsList.appendChild(tabElement);
+                break;
+            default:
+                this.tabsList.appendChild(tabElement);
+        }
     }
 
     showTabContextMenu(event, tabId) {
@@ -175,11 +238,16 @@ export class Sidebar {
                 }
             </style>
             <ul class="context-menu">
+                <li class="context-menu-item" id="unload-action">Unload Tab</li>
                 <li class="context-menu-item" id="close-action">Close Tab</li>
             </ul>
             <script>
                 document.getElementById('close-action').addEventListener('click', () => {
                     window.modalAPI.sendAction({ type: 'close-tab', tabId: '${tabId}' });
+                    window.modalAPI.close();
+                });
+                 document.getElementById('unload-action').addEventListener('click', () => {
+                    window.modalAPI.unloadTab('${tabId}');
                     window.modalAPI.close();
                 });
             </script>
@@ -191,37 +259,39 @@ export class Sidebar {
             x: event.clientX,
             y: event.clientY,
             width: 150,
-            height: 45
+            height: 75
         });
     }
 
     switchTab(tabId) {
         if (this.activeTabId) {
-            const oldActiveTab = document.querySelector(`.tab[data-tab-id="${this.activeTabId}"]`);
-            if (oldActiveTab) {
-                oldActiveTab.classList.remove('active');
-            }
+            const oldTab = document.querySelector(`.tab.active`);
+            if (oldTab) oldTab.classList.remove('active');
         }
-        const newActiveTab = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
-        if (newActiveTab) {
-            newActiveTab.classList.add('active');
+        const newTab = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
+        if (newTab) {
+            newTab.classList.add('active');
             this.activeTabId = tabId;
-            const title = newActiveTab.querySelector('.tab-title').textContent;
-            document.title = `${title} - ZenIUM`;
+            document.title = `${newTab.querySelector('.tab-title').textContent} - ZenIUM`;
             this.urlInput.setActiveTabId(tabId);
             viewApi.switchTab(tabId);
         }
     }
 
+    // --- KEY CHANGE: Add unloadTab method ---
+    unloadTab(tabId) {
+        viewApi.unloadTab(tabId);
+    }
+
     closeTab(tabId) {
         const tabElement = document.querySelector(`.tab[data-tab-id="${tabId}"]`);
         if (tabElement) {
-            tabElement.parentElement.removeChild(tabElement);
+            tabElement.remove();
             viewApi.closeTab(tabId);
             if (this.activeTabId === tabId) {
-                const firstTab = document.querySelector('.tab');
-                if (firstTab) {
-                    this.switchTab(firstTab.dataset.tabId);
+                const nextTab = document.querySelector('.tab');
+                if (nextTab) {
+                    this.switchTab(nextTab.dataset.tabId);
                 } else {
                     this.activeTabId = null;
                     document.title = 'ZenIUM';
@@ -233,10 +303,10 @@ export class Sidebar {
     render() {
         const sidebarContainer = document.createElement('div');
         sidebarContainer.className = 'tabs-container';
-        
-        const urlInputContainer = this.urlInput.render();
 
+        // --- FIX: Build the static HTML structure first with a placeholder ---
         sidebarContainer.innerHTML = `
+            <div id="navigation-placeholder"></div>
             <div id="essential-tabs-list"></div>
             <div id="pinned-tabs-list"></div>
             <div class="divider"></div>
@@ -252,7 +322,9 @@ export class Sidebar {
             </div>
         `;
         
-        sidebarContainer.prepend(urlInputContainer);
+        // --- FIX: Get the placeholder and append the URLInput's DOM safely ---
+        const navigationPlaceholder = sidebarContainer.querySelector('#navigation-placeholder');
+        navigationPlaceholder.appendChild(this.urlInput.render());
 
         this.tabsList = sidebarContainer.querySelector('#tabs-list');
         this.pinnedTabsList = sidebarContainer.querySelector('#pinned-tabs-list');
@@ -269,13 +341,8 @@ export class Sidebar {
                 }
             });
         });
-
-        const newTabBtn = sidebarContainer.querySelector('#new-tab-btn');
-        const settingsBtn = sidebarContainer.querySelector('#settings-btn');
-        
-        newTabBtn.addEventListener('click', () => this.createTab());
-        settingsBtn.addEventListener('click', () => this.settingsModal.open());
-        
+        sidebarContainer.querySelector('#new-tab-btn').addEventListener('click', () => this.createTab());
+        sidebarContainer.querySelector('#settings-btn').addEventListener('click', () => this.settingsModal.open());
         return sidebarContainer;
     }
 

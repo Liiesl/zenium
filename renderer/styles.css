@@ -201,11 +201,10 @@ body, html {
 
 /* --- KEY CHANGE: Styles for Essential and Pinned Tabs --- */
 #essential-tabs-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    display: flex;
+    flex-wrap: wrap;
     gap: 8px;
     padding: 10px 5px;
-    max-width: 186px; /* (40px * 3) + (8px * 2) + (5px * 2) approx */
 }
 
 #pinned-tabs-list {
@@ -228,9 +227,10 @@ body, html {
 }
 
 #essential-tabs-list .tab {
+    flex-grow: 1;
+    flex-basis: 60px;
     padding: 0;
     height: 50px;
-    width: 80px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -318,25 +318,38 @@ body, html {
     text-overflow: ellipsis;
 }
 
-.close-tab-btn {
+.close-tab-btn, .unload-tab-btn {
     border: none;
     background: none;
     cursor: pointer;
     font-weight: bold;
-    color: var(--subtle-text-color);
+    color: var(--text-color);
     opacity: 0;
     transition: opacity 0.15s ease-in-out;
     margin-left: auto;
     border-radius: 4px;
 }
 
-.tab:hover .close-tab-btn {
+.unload-tab-btn {
+    min-width: 20px;
+}
+
+.tab:hover .close-tab-btn, .unload-tab-btn {
     opacity: 1;
 }
 
-.close-tab-btn:hover {
+.close-tab-btn:hover, .unload-tab-btn:hover {
     color: var(--hover-color);
     background-color: var(--subtle-text-color);
+}
+
+.tab.unloaded {
+  opacity: 0.6;
+}
+
+.tab.unloaded:hover {
+  opacity: 1;
+  font-style: normal;
 }
 
 .sidebar-footer {

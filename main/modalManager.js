@@ -68,7 +68,19 @@ class ModalManager {
         this.modals = new Map(); // Stores modals by their user-defined ID
         this.modalIdByWebContentsId = new Map(); // Maps webContents.id to user-defined ID
     }
-
+    // --- NEW METHOD ---
+    /**
+     * Gets the most recently added (and thus visually top-most) modal view.
+     * @returns {BrowserView | null} The BrowserView of the top modal, or null if none.
+     */
+    getTopModal() {
+        if (this.modals.size === 0) {
+            return null;
+        }
+        // Maps iterate in insertion order. The last one added is the "topmost".
+        const lastModalId = Array.from(this.modals.keys()).pop();
+        return this.modals.get(lastModalId);
+    }
     /**
      * Creates and displays a new modal view.
      * @param {object} options - Configuration for the modal.
@@ -97,6 +109,9 @@ class ModalManager {
         });
 
         this.mainWindow.addBrowserView(modalView);
+        // --- KEY CHANGE: Explicitly set this view on top to fix z-index issues ---
+        this.mainWindow.setTopBrowserView(modalView);
+
         this.modals.set(options.id, modalView);
         this.modalIdByWebContentsId.set(modalView.webContents.id, options.id);
 

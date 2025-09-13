@@ -10,6 +10,9 @@ export const viewApi = {
   restoreTab: (tabId, url, history) => window.electronAPI.restoreTab(tabId, url, history),
   switchTab: (tabId) => window.electronAPI.switchTab(tabId),
   closeTab: (tabId) => window.electronAPI.closeTab(tabId),
+
+  unloadTab: (tabId) => window.electronAPI.unloadTab(tabId),
+
   navigate: (tabId, url) => window.electronAPI.navigate(tabId, url),
   goBack: (tabId) => window.electronAPI.goBack(tabId),
   goForward: (tabId) => window.electronAPI.goForward(tabId),
@@ -19,7 +22,9 @@ export const viewApi = {
   onFaviconUpdated: (callback) => window.electronAPI.onFaviconUpdated(callback),
   // --- FIX: Add the new listener ---
   onTabRestored: (callback) => window.electronAPI.onTabRestored(callback),
-
+  onCreateUnloadedTab: (callback) => window.electronAPI.onCreateUnloadedTab(callback),
+  onTabUnloaded: (callback) => window.electronAPI.onTabUnloaded(callback),
+  onTabLoaded: (callback) => window.electronAPI.onTabLoaded(callback),
   // Window Controls
   minimizeWindow: () => window.electronAPI.minimizeWindow(),
   maximizeWindow: () => window.electronAPI.maximizeWindow(),

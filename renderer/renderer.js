@@ -83,6 +83,12 @@ class App {
             this.sidebar.createRestoredTab(data);
         });
 
+        // --- KEY CHANGE: Listen for unloaded tabs during session restore ---
+        viewApi.onCreateUnloadedTab((data) => {
+            console.log('[Renderer] Received create-unloaded-tab event:', data);
+            this.sidebar.createUnloadedTab(data);
+        });
+
         // Listen for the 'switch-tab' event from session restore
         window.electronAPI.onSwitchTab((tabId) => {
             console.log(`[Renderer] Received switch-tab event for tabId: ${tabId}`);

@@ -7,11 +7,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onCreateTab: (callback) => ipcRenderer.on('create-tab', (_event, value) => callback(value)),
   onSwitchTab: (callback) => ipcRenderer.on('switch-tab', (_event, value) => callback(value)),
   onTabRestored: (callback) => ipcRenderer.on('tab-restored', (_event, value) => callback(value)),
-  
+
+  // --- KEY CHANGE: Listeners for unloaded tabs ---
+  onCreateUnloadedTab: (callback) => ipcRenderer.on('create-unloaded-tab', (_event, value) => callback(value)),
+  onTabUnloaded: (callback) => ipcRenderer.on('tab-unloaded', (_event, tabId) => callback(tabId)),
+  onTabLoaded: (callback) => ipcRenderer.on('tab-loaded', (_event, tabId) => callback(tabId)),
+
   newTab: (tabId, url) => ipcRenderer.send('new-tab', { tabId, url }),
   restoreTab: (tabId, url, history) => {
     ipcRenderer.send('restore-tab', { tabId, url, history });
   },
+  
+  unloadTab: (tabId) => ipcRenderer.send('unload-tab', tabId),
+
   switchTab: (tabId) => ipcRenderer.send('switch-tab', tabId),
   closeTab: (tabId) => ipcRenderer.send('close-tab', tabId),
   navigate: (tabId, url) => ipcRenderer.send('navigate', { tabId, url }),

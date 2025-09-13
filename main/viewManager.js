@@ -4,19 +4,22 @@ const path = require('path');
 const { attachKeyBlocker } = require('./keyblocker.js');
 
 class ViewManager {
-    constructor(mainWindow, historyManager) {
+    constructor(mainWindow, historyManager, modalManager) {
         this.mainWindow = mainWindow;
         this.historyManager = historyManager;
+        this.modalManager = modalManager; // This line prevents the error by storing the manager
         this.views = {};
+        this.unloadedTabs = {};
         this.loadingViews = {};
         this.isLoading = {};
         this.activeTabId = null;
         this.sidebarWidth = 200;
         this.animationInterval = null;
         this.VIEW_PADDING = 10;
-        this.hideLoadingTimeout = {}; // To manage hide timeouts
+        this.hideLoadingTimeout = {};
     }
 
+    // ... methods from createWindow to hideLoadingOverlay are unchanged ...
     updateSidebarWidth(newWidth) {
         this.sidebarWidth = newWidth;
         this.updateActiveViewBounds();
@@ -32,7 +35,7 @@ class ViewManager {
         this.mainWindow.contentView.addChildView(loadingView);
         loadingView.webContents.loadFile(path.join(__dirname, '..', 'renderer', 'loading.html'));
         this.loadingViews[tabId] = loadingView;
-        this.hideLoadingOverlay(tabId); // Initially hidden
+        this.hideLoadingOverlay(tabId);
     }
 
     showLoadingOverlay(tabId) {
@@ -90,7 +93,7 @@ class ViewManager {
             loadingView.setBounds({ x: 0, y: 0, width: 0, height: 0 });
         }
     }
-
+    
     newTab(tabId, url = 'zenium://newtab', history = null) {
         const view = new WebContentsView({
             webPreferences: {
@@ -109,7 +112,6 @@ class ViewManager {
 
         this.createLoadingView(tabId);
         
-        // --- KEY CHANGE: Use the modern, fast history restoration API ---
         const restoreHistory = async () => {
             if (view.webContents.isDestroyed()) return;
 
@@ -122,23 +124,16 @@ class ViewManager {
                 });
                 console.log(`[ViewManager] History restoration complete for tab ${tabId}.`);
 
-                // --- FIX: After successful restoration, immediately send the final state to the renderer ---
                 if (!view.webContents.isDestroyed()) {
-                    const finalTitle = view.webContents.getTitle();
-                    const finalURL = view.webContents.getURL();
-                    const favicons = view.webContents.getFavicons(); // This might be empty if not yet loaded, which is okay.
-                    
                     this.mainWindow.webContents.send('tab-restored', {
                         tabId: tabId,
-                        title: finalTitle,
-                        url: finalURL,
-                        faviconUrl: (favicons && favicons.length > 0) ? favicons[0] : null
+                        title: view.webContents.getTitle(),
+                        url: view.webContents.getURL(),
                     });
                 }
 
             } catch (error) {
                 console.error(`[ViewManager] Failed to restore history for tab ${tabId}:`, error.message);
-                // Fallback: If restore fails, at least load the active URL.
                 if (!view.webContents.isDestroyed()) {
                     const activeUrl = history.entries[history.index]?.url;
                     if (activeUrl) {
@@ -158,8 +153,7 @@ class ViewManager {
         }
 
         attachKeyBlocker(view.webContents);
-
-        // ... (all event listeners like 'did-start-loading', 'page-title-updated', etc. remain the same) ...
+        
         view.webContents.on('did-start-loading', () => {
             if (view.webContents.getURL().startsWith('zenium://')) return;
             this.isLoading[tabId] = true;
@@ -212,8 +206,7 @@ class ViewManager {
 
         const sendUrlUpdate = () => {
             if (view.webContents && !view.webContents.isDestroyed()) {
-                const currentURL = view.webContents.getURL();
-                this.mainWindow.webContents.send('url-updated', { tabId, url: currentURL });
+                this.mainWindow.webContents.send('url-updated', { tabId, url: view.webContents.getURL() });
             }
         };
 
@@ -224,7 +217,15 @@ class ViewManager {
     }
     
     switchTab(tabId) {
-        if (!this.views[tabId]) return;
+        if (this.unloadedTabs[tabId]) {
+            this.loadTab(tabId);
+            return; // The 'loadTab' function will handle the final switch
+        }
+
+        if (!this.views[tabId]) {
+            console.warn(`[ViewManager] switchTab called for unknown tabId: ${tabId}`);
+            return;
+        }
 
         this.activeTabId = tabId;
 
@@ -245,8 +246,15 @@ class ViewManager {
 
         const webContents = this.views[tabId].webContents;
         if (webContents && !webContents.isDestroyed()) {
-            const currentURL = webContents.getURL();
-            this.mainWindow.webContents.send('url-updated', { tabId, url: currentURL });
+            this.mainWindow.webContents.send('url-updated', { tabId, url: webContents.getURL() });
+        }
+        
+        // --- FINAL FIX ---
+        // After switching the main content view, we must check if a modal is open
+        // and explicitly re-set it as the top view to prevent it from being hidden.
+        const topModal = this.modalManager.getTopModal();
+        if (topModal) {
+            this.mainWindow.setTopBrowserView(topModal);
         }
     }
 
@@ -281,6 +289,62 @@ class ViewManager {
         }
     }
 
+    unloadTab(tabId) {
+        if (this.views[tabId] && !this.unloadedTabs[tabId]) {
+            const view = this.views[tabId];
+            const webContents = view.webContents;
+
+            if (webContents && !webContents.isDestroyed()) {
+                // --- NEW: Asynchronously get the favicon before unloading ---
+                webContents.executeJavaScript(
+                    'Array.from(document.querySelectorAll("link[rel~=\'icon\']")).map(link => link.href)'
+                ).then(potentialFavicons => {
+                    const faviconUrl = (potentialFavicons && potentialFavicons.length > 0) ? potentialFavicons[0] : null;
+                    const navigationHistory = webContents.navigationHistory;
+                    this.unloadedTabs[tabId] = {
+                        url: webContents.getURL(),
+                        history: {
+                            index: navigationHistory.getActiveIndex(),
+                            entries: navigationHistory.getAllEntries(),
+                        },
+                        faviconUrl: faviconUrl // --- NEW: Store the favicon ---
+                    };
+                    this.closeTab(tabId);
+                    this.mainWindow.webContents.send('tab-unloaded', tabId);
+                    console.log(`[ViewManager] Unloaded tab ${tabId}.`);
+                }).catch(err => {
+                    console.warn(`[ViewManager] Could not get favicon for unloadTab ${tabId}, proceeding without it.`);
+                    const navigationHistory = webContents.navigationHistory;
+                    this.unloadedTabs[tabId] = {
+                        url: webContents.getURL(),
+                        history: { index: navigationHistory.getActiveIndex(), entries: navigationHistory.getAllEntries() },
+                        faviconUrl: null
+                    };
+                    this.closeTab(tabId);
+                    this.mainWindow.webContents.send('tab-unloaded', tabId);
+                });
+            }
+        }
+    }
+
+    loadTab(tabId) {
+        const tabState = this.unloadedTabs[tabId];
+        if (tabState) {
+            console.log(`[ViewManager] Loading previously unloaded tab ${tabId}.`);
+            delete this.unloadedTabs[tabId];
+            this.newTab(tabId, tabState.url, tabState.history);
+
+            // --- Pass the saved favicon to the renderer immediately ---
+            if (tabState.faviconUrl) {
+                this.mainWindow.webContents.send('update-tab-favicon', { tabId, faviconUrl: tabState.faviconUrl });
+            }
+
+            this.switchTab(tabId);
+            this.mainWindow.webContents.send('tab-loaded', tabId);
+        }
+    }
+    
+    // ... methods from navigate to end of file are unchanged ...
     navigate(tabId, url) {
         if (this.views[tabId]) {
             this.views[tabId].webContents.loadURL(url);

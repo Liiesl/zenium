@@ -10,8 +10,8 @@ const { attachKeyBlocker } = require('./keyblocker.js');
 const { registerZeniumProtocol } = require('./protocol.js');
 
 let mainWindow;
-let viewManager;
 let modalManager;
+let viewManager;
 let settingsManager;
 let historyManager;
 let sessionManager;
@@ -31,8 +31,8 @@ function createWindow() {
   });
 
   historyManager = new HistoryManager();
-  viewManager = new ViewManager(mainWindow, historyManager);
   modalManager = new ModalManager(mainWindow);
+  viewManager = new ViewManager(mainWindow, historyManager, modalManager);
   sessionManager = new SessionManager();
   settingsManager = new SettingsManager();
   
@@ -256,6 +256,11 @@ ipcMain.on('switch-tab', (event, tabId) => {
 
 ipcMain.on('close-tab', (event, tabId) => {
     if (viewManager) viewManager.closeTab(tabId);
+});
+
+// --- KEY CHANGE: Add a handler to unload a tab ---
+ipcMain.on('unload-tab', (event, tabId) => {
+    if (viewManager) viewManager.unloadTab(tabId);
 });
 
 ipcMain.on('navigate', (event, { tabId, url }) => {

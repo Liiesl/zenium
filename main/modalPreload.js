@@ -39,4 +39,7 @@ contextBridge.exposeInMainWorld('modalAPI', {
    * @returns {Promise<string[]>} A promise that resolves to an array of suggestions.
    */
   getSearchSuggestions: (query) => ipcRenderer.invoke('get-search-suggestions', query),
+
+
+  unloadTab: (tabId) => ipcRenderer.send('unload-tab', tabId),
 });
