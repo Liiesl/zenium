@@ -35,7 +35,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSettings: () => ipcRenderer.invoke('get-settings'),
   isDarkMode: () => ipcRenderer.invoke('is-dark-mode'),
   getTabId: () => ipcRenderer.invoke('get-my-tab-id'),
-  getHistory: () => ipcRenderer.invoke('get-history'),
+
   getSearchSuggestions: (query) => ipcRenderer.invoke('get-search-suggestions', query),
 
   onGetTabOrder: (callback) => ipcRenderer.on('get-tab-order', (event, ...args) => callback(...args)),

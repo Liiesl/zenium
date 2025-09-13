@@ -3,13 +3,13 @@
     const historyList = document.getElementById('history-list');
     const searchInput = document.getElementById('search');
 
-    if (!window.electronAPI) {
-        console.error('electronAPI is not available');
+    if (!window.pagesAPI) {
+        console.error('pagesAPI is not available');
         historyList.innerHTML = '<p class="no-history">Could not load history.</p>';
         return;
     }
 
-    const history = await window.electronAPI.getHistory();
+    const history = await window.pagesAPI.getHistory();
     console.log(history);
 
     const renderHistory = (searchTerm = '') => {

@@ -1,5 +1,5 @@
 // main/viewManager.js
-const { BrowserView } = require('electron');
+const { WebContentsView } = require('electron');
 const path = require('path');
 const { attachKeyBlocker } = require('./keyblocker.js');
 
@@ -23,13 +23,13 @@ class ViewManager {
     }
 
     createLoadingView(tabId) {
-        const loadingView = new BrowserView({
+        const loadingView = new WebContentsView({
             webPreferences: {
                 nodeIntegration: false,
                 contextIsolation: true
             }
         });
-        this.mainWindow.addBrowserView(loadingView);
+        this.mainWindow.contentView.addChildView(loadingView);
         loadingView.webContents.loadFile(path.join(__dirname, '..', 'renderer', 'loading.html'));
         this.loadingViews[tabId] = loadingView;
         this.hideLoadingOverlay(tabId); // Initially hidden
@@ -59,7 +59,7 @@ class ViewManager {
                 height: loadingBarHeight
             });
 
-            this.mainWindow.setTopBrowserView(loadingView);
+            this.mainWindow.contentView.addChildView(loadingView);
         }
     }
 
@@ -76,7 +76,7 @@ class ViewManager {
                 this.hideLoadingTimeout[tabId] = setTimeout(() => {
                     this.hideLoadingOverlay(tabId);
                     if (this.views[tabId] && this.activeTabId === tabId) {
-                        this.mainWindow.setTopBrowserView(this.views[tabId]);
+                        this.mainWindow.contentView.addChildView(this.views[tabId]);
                     }
                     delete this.hideLoadingTimeout[tabId];
                 }, 600);
@@ -92,17 +92,18 @@ class ViewManager {
     }
 
     newTab(tabId, url = 'zenium://newtab', history = null) {
-        const view = new BrowserView({
+        const view = new WebContentsView({
             webPreferences: {
-                preload: path.join(__dirname, 'preload.js'),
+                preload: path.join(__dirname, 'webContentsPreload.js'),
                 nodeIntegration: false,
                 contextIsolation: true
             }
         });
 
+        view.setBorderRadius(20);
         view.setBounds({ x: 0, y: 0, width: 0, height: 0 });
         
-        this.mainWindow.addBrowserView(view);
+        this.mainWindow.contentView.addChildView(view);
         this.views[tabId] = view;
         this.isLoading[tabId] = false;
 
@@ -227,7 +228,7 @@ class ViewManager {
 
         this.activeTabId = tabId;
 
-        this.mainWindow.setTopBrowserView(this.views[tabId]);
+        this.mainWindow.contentView.addChildView(this.views[tabId]);
 
         for (const id in this.views) {
             if (id !== this.activeTabId) {
@@ -252,7 +253,7 @@ class ViewManager {
     closeTab(tabId) {
         if (this.views[tabId]) {
             const view = this.views[tabId];
-            this.mainWindow.removeBrowserView(view);
+            this.mainWindow.contentView.removeChildView(view);
             if (view.webContents && !view.webContents.isDestroyed()) {
                 view.webContents.destroy();
             }
@@ -261,7 +262,7 @@ class ViewManager {
 
         if (this.loadingViews[tabId]) {
             const loadingView = this.loadingViews[tabId];
-            this.mainWindow.removeBrowserView(loadingView);
+            this.mainWindow.contentView.removeChildView(loadingView);
             if (loadingView.webContents && !loadingView.webContents.isDestroyed()) {
                 loadingView.webContents.destroy();
             }

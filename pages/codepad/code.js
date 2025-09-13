@@ -21,7 +21,7 @@ const placeholderHTML = `<!DOCTYPE html>
     <button>Click Me</button>
 
     <!-- To use the JavaScript from the JS tab, you MUST include this script -->
-    <script src="code.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>`;
 
@@ -56,7 +56,7 @@ button:hover {
 `;
 
 const placeholderJS = `// To run this JS, you must add the following to your HTML body:
-// <script src="code.js"></script>
+// <script src="script.js"></script>
 
 function changeColor() {
   const colors = ['#ff6b6b', '#f06595', '#cc5de8', '#845ef7', '#5c7cfa', '#f0f8ff'];
@@ -91,7 +91,7 @@ function initializeApp() {
     // |                     MODIFIED UPDATE LOGIC                       |
     // | The logic below has been simplified. It no longer auto-injects  |
     // | code. It will ONLY add CSS or JS if the corresponding tags      |
-    // | (<link...href="styles.css"> and <script...src="code.js">)       |
+    // | (<link...href="styles.css"> and <script...src="script.js">)       |
     // | are found in the HTML editor.                                   |
     // ===================================================================
     function updatePreview() {

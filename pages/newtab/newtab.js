@@ -47,7 +47,7 @@ class NewTabPage {
         }
 
         // --- NEW: Ask main process for suggestions ---
-        const suggestions = await window.electronAPI.getSearchSuggestions(query);
+        const suggestions = await window.pagesAPI.getSearchSuggestions(query);
         this.renderSuggestions(suggestions);
     }
 
@@ -123,11 +123,11 @@ class NewTabPage {
             url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
         }
 
-        window.electronAPI.navigate(this.tabId, url);
+        window.pagesAPI.navigate(this.tabId, url);
     }
     
     async applyTheme() {
-        const isDarkMode = await window.electronAPI.isDarkMode();
+        const isDarkMode = await window.pagesAPI.isDarkMode();
         document.body.classList.toggle('dark-theme', isDarkMode);
         document.body.classList.toggle('light-theme', !isDarkMode);
     }

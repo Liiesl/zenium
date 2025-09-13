@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             // Fallback to Google search for anything else.
-            url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+            url = `https://www.google.com/search?hl=en&gl=us&q=${encodeURIComponent(query)}`;
         }
 
         window.modalAPI.sendAction({ type: 'navigate-to-url', url: url, tabId: activeTabId });
