@@ -2,7 +2,7 @@
 
 When [Zen Browser](https://github.com/zen-browser/desktop) is your daily driver, but you need Chromium dev tools.
 
-ZenIUM is a minimalist, vertical-tab browser for those who appreciate the modern, clean, and sleek user interfaces of browsers like Arc and Zen, but require the power and compatibility of the Chromium engine. It's built for a superior browsing experience without the clutter of mainstream alternatives.
+ZenIUM is yet another minimalist, vertical-tab browser for those who appreciate the modern, clean, and sleek user interfaces of browsers like Arc and Zen, but require the power and compatibility of the Chromium engine. It's built for a superior browsing experience without the clutter of mainstream alternatives.
 
 ## Why ZenIUM?
 
@@ -12,7 +12,7 @@ On top of that, if you're building modern web applications and SaaS products, yo
 
 But going back to Chrome just to view a site or for development leaves a bad taste in your mouth. The user interface is cluttered, uninspired, and frankly, a step down from the elegant, focused experience you've grown to love.
 
-This is the gap ZenIUM fills.
+This is the gap ZenIUM comes in.
 
 It's for anyone who needs to use a Chromium-based browser—whether for compatibility or development—but refuses to settle for a subpar UI. Get the modern, vertical-tabbed, and minimalist aesthetic you want, built on the powerful engine you actually need.
 

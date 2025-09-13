@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Listeners for session restore
   onCreateTab: (callback) => ipcRenderer.on('create-tab', (_event, value) => callback(value)),
   onSwitchTab: (callback) => ipcRenderer.on('switch-tab', (_event, value) => callback(value)),
+  // --- FIX: Add the new listener for when a restored tab is fully ready ---
+  onTabRestored: (callback) => ipcRenderer.on('tab-restored', (_event, value) => callback(value)),
   
   // Tab/View Management
   newTab: (tabId, url) => ipcRenderer.send('new-tab', { tabId, url }),
@@ -42,5 +44,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isDarkMode: () => ipcRenderer.invoke('is-dark-mode'),
   getTabId: () => ipcRenderer.invoke('get-my-tab-id'),
   getHistory: () => ipcRenderer.invoke('get-history'),
-  getSearchSuggestions: (query) => ipcRenderer.invoke('get-search-suggestions', query)
+  getSearchSuggestions: (query) => ipcRenderer.invoke('get-search-suggestions', query),
+
+  // --- KEY CHANGE: Add the missing functions for tab reordering ---
+  onGetTabOrder: (callback) => ipcRenderer.on('get-tab-order', (event, ...args) => callback(...args)),
+  sendTabOrder: (order) => ipcRenderer.send('tab-order', order),
 });

@@ -15,7 +15,7 @@
         --background-color: #1E1E1E;
         --sidebar-color: #525252;
         --active-tab-color: #2D2D2D;
-        --hover-color: #3E3E3E;
+        --hover-color: #222222;
         --border-color: #333333;
         --text-color: #FFFFFF;
         --subtle-text-color: #AAAAAA;
@@ -26,8 +26,8 @@
 body.dark-theme {
     --background-color: #1E1E1E;
     --sidebar-color: #525252;
-    --active-tab-color: #7e7e7e;
-    --hover-color: #3E3E3E;
+    --active-tab-color: #747474;
+    --hover-color: #6a6a6a;
     --border-color: #333333;
     --text-color: #FFFFFF;
     --subtle-text-color: #AAAAAA;
@@ -137,6 +137,7 @@ body, html {
     flex-direction: column;
     flex-shrink: 0; /* Prevent the container from shrinking */
     padding-top: 0; /* Removed padding-top as it's now on the parent .container */
+    padding-left: 10px;
 }
 
 #resize-handle {
@@ -196,6 +197,34 @@ body, html {
 
 #url-display:hover {
     background-color: var(--hover-color);
+}
+
+#pinned-tabs-placeholder {
+    min-height: 10px;
+}
+
+.divider {
+    height: 1px;
+    background-color: var(--active-tab-color);
+    margin: 5px 10px;
+}
+
+#omnibox-placeholder-btn {
+    width: calc(100% - 10px);
+    margin: 5px 0px 10px 5px;
+    padding: 10px 17px;
+    border: none;
+    background-color: transparent;
+    color: var(--subtle-text-color);
+    cursor: pointer;
+    border-radius: 8px;
+    text-align: left;
+    font-size: 14px;
+}
+
+#omnibox-placeholder-btn:hover {
+    background-color: var(--hover-color);
+    border-color: var(--accent-color);
 }
 
 #tabs-list {

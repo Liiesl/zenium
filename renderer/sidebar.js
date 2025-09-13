@@ -9,6 +9,8 @@ export class Sidebar {
         this.urlInput = new URLInput(); // Instantiate the new URLInput
         this.settingsModal = settingsModal;
         this.settings = initialSettings || {};
+        // --- KEY CHANGE: Add a property to track the currently dragged tab ---
+        this.draggedTab = null;
 
         viewApi.onUpdateTitle(({ tabId, title }) => {
             this.updateTabTitle(tabId, title);
@@ -24,11 +26,29 @@ export class Sidebar {
             }
         });
 
+        // --- FIX: Listen for the new 'tab-restored' event ---
+        viewApi.onTabRestored(({ tabId, title, url, faviconUrl }) => {
+            this.updateTabTitle(tabId, title);
+            if (faviconUrl) {
+                this.updateTabFavicon(tabId, faviconUrl);
+            }
+            if (tabId === this.activeTabId) {
+                this.urlInput.updateURL(url);
+            }
+        });
+
         // Listen for live setting updates
         viewApi.onSettingUpdated(({ key, value }) => {
             if (this.settings && typeof this.settings === 'object') {
                 this.settings[key] = value;
             }
+        });
+        
+        // --- KEY CHANGE: Add listener to get the tab order for session saving ---
+        window.electronAPI.onGetTabOrder((event) => {
+            const tabElements = Array.from(this.tabsList.querySelectorAll('.tab'));
+            const tabOrder = tabElements.map(tab => tab.dataset.tabId);
+            window.electronAPI.sendTabOrder(tabOrder);
         });
     }
 
@@ -51,17 +71,18 @@ export class Sidebar {
         }
     }
 
-    createTab() {
-        const tabId = `tab-${Date.now()}`;
+    // --- KEY CHANGE: Abstracted tab element creation to reuse it ---
+    _createTabElement(tabId, title = 'New Tab') {
         const tabElement = document.createElement('div');
         tabElement.className = 'tab';
         tabElement.dataset.tabId = tabId;
+        // --- KEY CHANGE: Make the element draggable ---
+        tabElement.draggable = true;
         tabElement.innerHTML = `
             <img class="tab-favicon" src="" style="display: none;" />
-            <span class="tab-title">New Tab</span>
+            <span class="tab-title">${title}</span>
             <button class="close-tab-btn">x</button>
         `;
-        this.tabsList.appendChild(tabElement);
 
         const closeBtn = tabElement.querySelector('.close-tab-btn');
         closeBtn.addEventListener('click', (e) => {
@@ -73,17 +94,34 @@ export class Sidebar {
             this.switchTab(tabId);
         });
 
-        // Add context menu listener to the tab
         tabElement.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             this.showTabContextMenu(e, tabId);
         });
+
+        // --- KEY CHANGE: Add drag and drop event listeners ---
+        tabElement.addEventListener('dragstart', () => {
+            this.draggedTab = tabElement;
+            tabElement.classList.add('dragging');
+        });
+
+        tabElement.addEventListener('dragend', () => {
+            this.draggedTab.classList.remove('dragging');
+            this.draggedTab = null;
+        });
+
+        return tabElement;
+    }
+
+
+    createTab() {
+        const tabId = `tab-${Date.now()}`;
+        const tabElement = this._createTabElement(tabId); // Use the new creator
+        this.tabsList.appendChild(tabElement);
         
         // --- FIXED: Use the setting to determine the new tab URL ---
         let url = this.settings?.newTabUrl || 'zenium://newtab';
         
-        // If the user has selected the default new tab page, we append the tabId
-        // so the page can identify itself. For custom URLs, we load them directly.
         if (url === 'zenium://newtab') {
             url = `zenium://newtab?tabId=${tabId}`;
         }
@@ -92,33 +130,10 @@ export class Sidebar {
         this.switchTab(tabId);
     }
     
-    // --- KEY CHANGE: Add this new method to handle restored tabs ---
     createRestoredTab({ tabId, url, history }) {
-        const tabElement = document.createElement('div');
-        tabElement.className = 'tab';
-        tabElement.dataset.tabId = tabId;
-        // Start with a generic title; it will be updated once the page loads.
-        tabElement.innerHTML = `
-            <img class="tab-favicon" src="" style="display: none;" />
-            <span class="tab-title">Loading...</span>
-            <button class="close-tab-btn">x</button>
-        `;
+        // Use the new creator, starting with a generic title
+        const tabElement = this._createTabElement(tabId, 'Loading...');
         this.tabsList.appendChild(tabElement);
-
-        const closeBtn = tabElement.querySelector('.close-tab-btn');
-        closeBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.closeTab(tabId);
-        });
-
-        tabElement.addEventListener('click', () => {
-            this.switchTab(tabId);
-        });
-
-        tabElement.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            this.showTabContextMenu(e, tabId);
-        });
 
         // Call the specific API to restore the tab in the main process
         viewApi.restoreTab(tabId, url, history);
@@ -211,6 +226,9 @@ export class Sidebar {
         const urlInputContainer = this.urlInput.render();
 
         sidebarContainer.innerHTML = `
+            <div id="pinned-tabs-placeholder"></div>
+            <div class="divider"></div>
+            <button id="omnibox-placeholder-btn">+ New Tab</button>
             <div id="tabs-list"></div>
             <div class="sidebar-footer">
                 <button id="new-tab-btn">
@@ -225,14 +243,40 @@ export class Sidebar {
         sidebarContainer.prepend(urlInputContainer);
 
         this.tabsList = sidebarContainer.querySelector('#tabs-list');
+
+        // --- KEY CHANGE: Add dragover listener to the list for reordering ---
+        this.tabsList.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const afterElement = this.getDragAfterElement(this.tabsList, e.clientY);
+            if (afterElement == null) {
+                this.tabsList.appendChild(this.draggedTab);
+            } else {
+                this.tabsList.insertBefore(this.draggedTab, afterElement);
+            }
+        });
+
+
         const newTabBtn = sidebarContainer.querySelector('#new-tab-btn');
         const settingsBtn = sidebarContainer.querySelector('#settings-btn');
         
         newTabBtn.addEventListener('click', () => this.createTab());
         settingsBtn.addEventListener('click', () => this.settingsModal.open());
-
-        // this.createTab(); // <- This line is now in renderer.js
         
         return sidebarContainer;
+    }
+
+    // --- KEY CHANGE: Helper function to determine drop position ---
+    getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.tab:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 }

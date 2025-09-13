@@ -1,36 +1,45 @@
 // main/sessionManager.js
-const { app } = require('electron');
+const { app, ipcMain } = require('electron'); // --- KEY CHANGE: require ipcMain ---
 const path = require('path');
 const fs = require('fs');
 
 const SESSION_PATH = path.join(app.getPath('userData'), 'session.json');
 
 class SessionManager {
-    saveSession(viewManager) {
-        if (!viewManager) {
-            console.error('[SessionManager] saveSession called without viewManager.');
+    // --- KEY CHANGE: This is now an async function ---
+    async saveSession(viewManager, mainWindow) {
+        if (!viewManager || !mainWindow) {
+            console.error('[SessionManager] saveSession called without viewManager or mainWindow.');
             return;
         }
 
+        // --- KEY CHANGE: Request the visual tab order from the renderer ---
+        mainWindow.webContents.send('get-tab-order');
+        const tabOrder = await new Promise(resolve => {
+            ipcMain.once('tab-order', (event, order) => resolve(order));
+        });
+
         const tabs = Object.entries(viewManager.views).reduce((acc, [tabId, view]) => {
+            // ... (rest of the logic is the same)
             try {
                 if (!view || !view.webContents || view.webContents.isDestroyed()) {
                     return acc;
                 }
 
-                // Use navigationHistory API instead of getHistory and getActiveIndex
                 const navigationHistory = view.webContents.navigationHistory;
-                const historyEntries = navigationHistory.getAllEntries().map(entry => entry.url); // get array of URLs
+                // --- KEY CHANGE: Get the full history entry objects, not just URLs ---
+                const historyEntries = navigationHistory.getAllEntries();
                 const activeIndex = navigationHistory.getActiveIndex();
                 const url = view.webContents.getURL();
 
                 if (historyEntries.length > 0) {
                     acc.push({
                         tabId,
-                        url: url, // The last active URL
+                        url: url,
                         history: {
                             index: activeIndex,
-                            entries: historyEntries, // Array of URL strings
+                            // --- KEY CHANGE: Store the full entries array ---
+                            entries: historyEntries,
                         },
                     });
                 }
@@ -44,6 +53,8 @@ class SessionManager {
 
         const session = {
             activeTabId: viewManager.activeTabId,
+            // --- KEY CHANGE: Store the visual order of tabs ---
+            tabOrder: tabOrder,
             tabs,
         };
 
@@ -78,7 +89,20 @@ class SessionManager {
         }
 
         console.log('[SessionManager] Starting restoreSession...');
-        session.tabs.forEach((tab) => {
+
+        // --- KEY CHANGE: Create a map for quick lookups and sort tabs based on the saved order ---
+        const tabMap = new Map(session.tabs.map(tab => [tab.tabId, tab]));
+        const orderedTabs = (session.tabOrder || []).map(tabId => tabMap.get(tabId)).filter(Boolean);
+
+        // Add any tabs that might not have been in the order list (fallback)
+        session.tabs.forEach(tab => {
+            if (!session.tabOrder || !session.tabOrder.includes(tab.tabId)) {
+                orderedTabs.push(tab);
+            }
+        });
+
+
+        orderedTabs.forEach((tab) => {
             console.log(`[SessionManager] Sending 'create-tab' event to renderer for tabId: ${tab.tabId}`);
             mainWindow.webContents.send('create-tab', {
                 tabId: tab.tabId,

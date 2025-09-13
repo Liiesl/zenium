@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Zenium CodePad</title>
+    <link rel="stylesheet" href="code.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <div class="container">
+        <div class="code-pane">
+            <div class="tabs">
+                <button class="tab-button active" data-tab="html-editor">HTML</button>
+                <button class="tab-button" data-tab="css-editor">CSS</button>
+                <button class="tab-button" data-tab="js-editor">JavaScript</button>
+            </div>
+            <div class="editor-container">
+                <div class="editor active" id="html-editor-container">
+                    <textarea id="html-editor"></textarea>
+                </div>
+                <div class="editor" id="css-editor-container">
+                    <textarea id="css-editor"></textarea>
+                </div>
+                <div class="editor" id="js-editor-container">
+                    <textarea id="js-editor"></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="preview-pane">
+            <iframe id="preview-frame" title="Live Preview"></iframe>
+        </div>
+    </div>
+    <!-- The single script that powers everything -->
+    <script src="code.js"></script>
+</body>
+</html>

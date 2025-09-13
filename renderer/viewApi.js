@@ -17,6 +17,8 @@ export const viewApi = {
   onUpdateTitle: (callback) => window.electronAPI.onUpdateTitle(callback),
   onURLUpdated: (callback) => window.electronAPI.onURLUpdated(callback),
   onFaviconUpdated: (callback) => window.electronAPI.onFaviconUpdated(callback),
+  // --- FIX: Add the new listener ---
+  onTabRestored: (callback) => window.electronAPI.onTabRestored(callback),
 
   // Window Controls
   minimizeWindow: () => window.electronAPI.minimizeWindow(),

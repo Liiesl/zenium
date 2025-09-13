@@ -108,32 +108,44 @@ class ViewManager {
 
         this.createLoadingView(tabId);
         
-        // --- KEY CHANGE: Async function to properly restore history ---
+        // --- KEY CHANGE: Use the modern, fast history restoration API ---
         const restoreHistory = async () => {
             if (view.webContents.isDestroyed()) return;
 
-            // Clear any history that might have been created by an initial blank page.
-            view.webContents.clearHistory();
-            
-            console.log(`[ViewManager] Sequentially loading ${history.entries.length} pages for tab ${tabId}.`);
-            // Sequentially load each URL. The `loadURL` method returns a promise that
-            // resolves when the page finishes loading, making it perfect for await.
-            for (const entryUrl of history.entries) {
-                try {
-                    await view.webContents.loadURL(entryUrl);
-                } catch (error) {
-                    console.warn(`[ViewManager] Failed to load history entry ${entryUrl} for tab ${tabId}:`, error.message);
-                }
-                if (view.webContents.isDestroyed()) break; // Stop if the tab was closed during restore
-            }
+            try {
+                console.log(`[ViewManager] Restoring history for tab ${tabId} with ${history.entries.length} entries at index ${history.index}.`);
+                // This single, efficient call loads the page at history.index AND populates the back/forward list.
+                await view.webContents.navigationHistory.restore({
+                    index: history.index,
+                    entries: history.entries
+                });
+                console.log(`[ViewManager] History restoration complete for tab ${tabId}.`);
 
-            // After loading all entries, the view is on the LAST page of the history.
-            // Now, we silently navigate to the correct index it was on when the session was saved.
-            if (!view.webContents.isDestroyed() && view.webContents.getActiveIndex() !== history.index) {
-                console.log(`[ViewManager] Navigating to correct history index: ${history.index}`);
-                view.webContents.goToIndex(history.index);
+                // --- FIX: After successful restoration, immediately send the final state to the renderer ---
+                if (!view.webContents.isDestroyed()) {
+                    const finalTitle = view.webContents.getTitle();
+                    const finalURL = view.webContents.getURL();
+                    const favicons = view.webContents.getFavicons(); // This might be empty if not yet loaded, which is okay.
+                    
+                    this.mainWindow.webContents.send('tab-restored', {
+                        tabId: tabId,
+                        title: finalTitle,
+                        url: finalURL,
+                        faviconUrl: (favicons && favicons.length > 0) ? favicons[0] : null
+                    });
+                }
+
+            } catch (error) {
+                console.error(`[ViewManager] Failed to restore history for tab ${tabId}:`, error.message);
+                // Fallback: If restore fails, at least load the active URL.
+                if (!view.webContents.isDestroyed()) {
+                    const activeUrl = history.entries[history.index]?.url;
+                    if (activeUrl) {
+                        console.log(`[ViewManager] Fallback: Loading active URL ${activeUrl}`);
+                        await view.webContents.loadURL(activeUrl);
+                    }
+                }
             }
-            console.log(`[ViewManager] History restoration complete for tab ${tabId}.`);
         };
 
         if (history && history.entries && history.entries.length > 0 && history.index > -1) {
@@ -306,11 +318,12 @@ class ViewManager {
         const isTitlebarExpanded = currentBounds.y > 10;
         const y = isTitlebarExpanded ? 40 : 10;
         const newHeight = isTitlebarExpanded ? height - 50 : height - 20;
+        const RESIZE_HANDLE_WIDTH = 10;
 
         const newBounds = {
-            x: this.sidebarWidth + this.VIEW_PADDING,
+            x: this.sidebarWidth + this.VIEW_PADDING + RESIZE_HANDLE_WIDTH,
             y: y,
-            width: width - this.sidebarWidth - (this.VIEW_PADDING * 2),
+            width: width - this.sidebarWidth - (this.VIEW_PADDING * 2) - RESIZE_HANDLE_WIDTH,
             height: newHeight
         };
         view.setBounds(newBounds);

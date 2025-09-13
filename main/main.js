@@ -39,15 +39,14 @@ function createWindow() {
 
   mainWindow.on('resize', () => viewManager.updateActiveViewBounds());
 
-  // --- KEY CHANGE: Save session on 'close' instead of 'before-quit' ---
-  // This event fires before the window and its BrowserViews are destroyed,
-  // making it a much more reliable time to save the session state.
-  mainWindow.on('close', () => {
-    sessionManager.saveSession(viewManager);
+  // --- KEY CHANGE: The 'close' event handler is now async ---
+  mainWindow.on('close', async () => {
+    // --- KEY CHANGE: Pass mainWindow to saveSession ---
+    await sessionManager.saveSession(viewManager, mainWindow);
   });
-
+  
   const startPolling = () => {
-    if (pollMouseInterval) return;
+    if (pollMouseInterval) return;  
 
     let isMouseInTitlebar = false;
     pollMouseInterval = setInterval(() => {
@@ -106,13 +105,10 @@ app.whenReady().then(() => {
     }
   });
 
-  // --- KEY CHANGE: MOVE session logic out of 'did-finish-load' ---
   mainWindow.webContents.on('did-finish-load', () => {
-    // This event is now only for things that can happen immediately.
     attachKeyBlocker(mainWindow.webContents);
   });
 
-  // --- KEY CHANGE: ADD a new listener for our handshake signal ---
   ipcMain.on('renderer-ready', () => {
     console.log('[main.js] Received renderer-ready signal.');
     const savedSession = sessionManager.loadSession();
@@ -120,7 +116,6 @@ app.whenReady().then(() => {
       console.log(`[main.js] Found ${savedSession.tabs.length} tabs to restore.`);
       sessionManager.restoreSession(viewManager, mainWindow, savedSession);
     } else {
-      // If there's no session, tell the renderer to create one default tab.
       console.log('[main.js] No saved session found. Instructing renderer to create an initial tab.');
       mainWindow.webContents.send('create-initial-tab');
     }
@@ -130,6 +125,11 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
+});
+
+// --- KEY CHANGE: Add a handler for the renderer to send its tab order ---
+ipcMain.on('tab-order', (event, order) => {
+    // This simply forwards the event to the promise in saveSession
 });
 
 // --- KEY CHANGE: The 'before-quit' handler is no longer needed for session saving. ---

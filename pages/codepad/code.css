@@ -1,0 +1,95 @@
+:root {
+    --editor-bg: #1e1e1e;
+    --pane-bg: #252526;
+    --text-color: #d4d4d4;
+    --border-color: #333333;
+    --preview-bg: #ffffff;
+    --active-tab: #007acc;
+}
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--pane-bg);
+    color: var(--text-color);
+    overflow: hidden; /* Prevent body scrollbars */
+}
+
+.container {
+    display: flex;
+    flex-direction: column; /* Changed to column */
+    height: 100vh;
+}
+
+.code-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border-bottom: 2px solid var(--border-color); /* Changed to bottom border */
+}
+
+.preview-pane {
+    flex: 1;
+}
+
+.tabs {
+    display: flex;
+    background-color: var(--pane-bg);
+}
+
+.tab-button {
+    padding: 10px 20px;
+    cursor: pointer;
+    background-color: var(--border-color);
+    border: none;
+    color: var(--text-color);
+    font-size: 14px;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 3px solid transparent;
+}
+
+.tab-button.active {
+    background-color: var(--editor-bg);
+    border-bottom: 3px solid var(--active-tab);
+}
+
+.editor-container {
+    flex-grow: 1;
+    display: flex;
+}
+
+.editor {
+    display: none; /* Hide editors by default */
+    width: 100%;
+    flex-direction: column;
+}
+
+.editor.active {
+    display: flex; /* Show active editor */
+}
+
+textarea {
+    flex-grow: 1;
+    width: 100%;
+    box-sizing: border-box; /* Include padding in width */
+    border: none;
+    background-color: var(--editor-bg);
+    color: var(--text-color);
+    font-family: 'Fira Code', 'Courier New', Courier, monospace;
+    font-size: 16px;
+    padding: 10px;
+    resize: none;
+}
+
+textarea:focus {
+    outline: none;
+}
+
+iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    background-color: var(--preview-bg);
+}

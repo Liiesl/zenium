@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Persistent Cookie Test</title>
+</head>
+<body>
+    <h1>Persistent Cookie Test Page</h1>
+    <button onclick="setPersistentCookie()">Set Persistent Cookie</button>
+    <button onclick="checkCookie()">Check for Cookie</button>
+    <button onclick="deleteCookie()">Delete Cookie</button>
+    <p id="status">Cookie status: Not checked</p>
+
+    <script>
+        function setPersistentCookie() {
+            // Set the expiration date to 7 days from now
+            let date = new Date();
+            date.setTime(date.getTime() + (7 * 24 * 60 * 60 * 1000));
+            let expires = "expires=" + date.toUTCString();
+
+            // Set the cookie
+            document.cookie = "test_cookie=hello_persistent; " + expires + "; path=/";
+            document.getElementById("status").textContent = "Persistent cookie has been set.";
+        }
+
+        function checkCookie() {
+            if (document.cookie.split(';').some((item) => item.trim().startsWith('test_cookie='))) {
+                document.getElementById("status").textContent = "Success! The persistent cookie exists.";
+            } else {
+                document.getElementById("status").textContent = "The persistent cookie was not found.";
+            }
+        }
+
+        function deleteCookie() {
+            // Set the expiration date to a past date to delete the cookie
+            document.cookie = "test_cookie=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            document.getElementById("status").textContent = "The persistent cookie has been deleted.";
+        }
+    </script>
+</body>
+</html>
