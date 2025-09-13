@@ -63,10 +63,11 @@ const globalCSS = fs.readFileSync(path.join(__dirname, '..', 'renderer', 'styles
  *     - The script runs. It can now use `window.modalAPI.getSettings()` or `window.modalAPI.close()` to securely communicate back with the main process.
  */
 class ModalManager {
-    constructor(mainWindow) {
+    constructor(mainWindow, settingsManager) {
         this.mainWindow = mainWindow;
         this.modals = new Map(); // Stores modals by their user-defined ID
         this.modalIdByWebContentsId = new Map(); // Maps webContents.id to user-defined ID
+        this.settingsManager = settingsManager; // --- KEY CHANGE: Store settingsManager instance
     }
     // --- NEW METHOD ---
     /**
@@ -166,6 +167,11 @@ class ModalManager {
                     html, body {
                         background-color: transparent;
                         overflow: hidden;
+                        scrollbar-width: thin; /* or auto, none */
+                        scrollbar-color: #888 transparent;
+                    }
+                    ::-webkit-scrollbar-track {
+                        background: transparent;
                     }
                 </style>
                 ${cssStyles}
@@ -189,8 +195,16 @@ class ModalManager {
             height: options.height,
         });
 
-        // Open DevTools for the modal for debugging
-        modalView.webContents.openDevTools({ mode: 'undocked' });
+        // --- KEY CHANGE: Check developer settings for debugging modals ---
+        const debugModals = this.settingsManager.settings.dev_debugModals;
+        if (debugModals) {
+            options.closeOnBlur = false; // Override and prevent closing on blur
+            modalView.webContents.openDevTools({ mode: 'undocked' });
+        } else {
+            // Open DevTools for the modal for debugging
+            // modalView.webContents.openDevTools({ mode: 'undocked' });
+        }
+
 
         // *** CHANGE: Wait for the modal content to load, then focus it ***
         modalView.webContents.on('did-finish-load', () => {
@@ -254,10 +268,28 @@ class ModalManager {
         const modalView = this.modals.get(id);
         if (modalView) {
             this.mainWindow.removeBrowserView(modalView);
-            modalView.webContents.destroy();
+            // NOTE: webContents.destroy() is not explicitly needed as removeBrowserView
+            // can trigger the necessary cleanup, and the 'destroyed' event handles the map deletion.
             this.modals.delete(id);
         }
     }
+
+    // --- NEW METHOD ---
+    /**
+     * Closes all currently open modal views and their associated DevTools.
+     */
+    closeAllModals() {
+        console.log('[ModalManager] Closing all modals...');
+        // Create a copy of keys because 'close' modifies 'this.modals'
+        const modalIdsToClose = Array.from(this.modals.keys());
+        for (const id of modalIdsToClose) {
+            this.close(id); // Use the existing close method which handles DevTools and map deletion
+        }
+        // After iterating, both maps should be effectively empty, but clear for certainty.
+        this.modals.clear();
+        this.modalIdByWebContentsId.clear(); // Ensure this is also cleared manually as 'destroyed' might not catch all cases if 'removeBrowserView' is not always destroying immediately.
+        console.log('[ModalManager] All modals closed.');
+     }
 }
 
 module.exports = { ModalManager };

@@ -15,7 +15,10 @@ class SettingsManager {
     loadSettings() {
         const defaults = {
             theme: 'system',
-            newTabUrl: 'zenium://newtab'
+            newTabUrl: 'zenium://newtab',
+            // --- KEY CHANGE: Add new developer settings ---
+            dev_openDevToolsOnStartup: false,
+            dev_debugModals: false,
         };
         try {
             if (fs.existsSync(SETTINGS_PATH)) {

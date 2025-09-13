@@ -15,6 +15,7 @@ export class SettingsModal {
                         <li class="settings-category active" data-page="general-page">General</li>
                         <li class="settings-category" data-page="appearance-page">Appearance</li>
                         <li class="settings-category" data-page="updates-page">Updates</li>
+                        <li class="settings-category" data-page="developer-page">Developer</li>
                     </ul>
                 </div>
                 <div id="settings-main">
@@ -61,7 +62,38 @@ export class SettingsModal {
                            <div id="download-progress-container" class="hidden"></div>
                            <button id="install-relaunch-btn" class="hidden">Restart and Install Update</button>
                         </div>
-                    </div>                
+                    </div>
+                    <!-- Developer Page -->
+                    <div id="developer-page" class="settings-page">
+                        <h2>Developer Tools</h2>
+                        <div class="setting-item">
+                            <h4>Main Window DevTools</h4>
+                            <p>Access the developer tools for the main application window.</p>
+                            <button id="open-main-devtools-btn">Open Main DevTools</button>
+                        </div>
+                        <div class="setting-item">
+                            <h4>Open DevTools on Startup</h4>
+                            <p>Automatically open the main window's developer tools when the application starts.</p>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="dev-open-on-startup-checkbox">
+                                <span>Enable</span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <h4>Debug Modals</h4>
+                            <p>For all modals: disable auto-close on blur and open their DevTools automatically.</p>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="dev-debug-modals-checkbox">
+                                <span>Enable</span>
+                            </label>
+                        </div>
+                        <!-- NEW: Reset Modals Button -->
+                        <div class="setting-item">
+                            <h4>Reset All Modals</h4>
+                            <p>Close all open modal dialogs and their DevTools.</p>
+                            <button id="reset-all-modals-btn">Close All Modals</button>
+                        </div>
+                    </div>
                 <button id="close-modal-btn" class="close-modal-btn">&times;</button>
                 </div>
             </div>

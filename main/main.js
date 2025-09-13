@@ -38,13 +38,21 @@ function createWindow() {
   });
 
   historyManager = new HistoryManager();
-  modalManager = new ModalManager(mainWindow);
+  // --- KEY CHANGE: Instantiate SettingsManager before ModalManager ---
+  settingsManager = new SettingsManager();
+  // --- KEY CHANGE: Pass settingsManager to ModalManager constructor ---
+  modalManager = new ModalManager(mainWindow, settingsManager);
   viewManager = new ViewManager(mainWindow, historyManager, modalManager);
   sessionManager = new SessionManager();
-  settingsManager = new SettingsManager();
   
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
-  mainWindow.webContents.openDevTools({ mode: 'undocked' });
+  
+  // --- KEY CHANGE: Open DevTools on startup based on settings ---
+  const settings = settingsManager.settings;
+  if (settings.dev_openDevToolsOnStartup) {
+    mainWindow.webContents.openDevTools({ mode: 'undocked' });
+  }
+
 
   mainWindow.on('resize', () => viewManager.updateActiveViewBounds());
 
@@ -291,8 +299,22 @@ ipcMain.on('focus-main-window', () => {
     }
 });
 
+// --- NEW IPC HANDLER ---
+ipcMain.on('open-main-devtools', () => {
+    if (mainWindow) {
+        mainWindow.webContents.openDevTools({ mode: 'undocked' });
+    }
+});
+
 ipcMain.on('show-modal', (event, options) => {
     modalManager.show(options);
+});
+
+// NEW IPC HANDLER
+ipcMain.on('reset-all-modals', () => {
+    if (modalManager) {
+        modalManager.closeAllModals();
+    }
 });
 
 ipcMain.on('close-modal', (event, id) => {
@@ -368,7 +390,8 @@ ipcMain.on('minimize-window', () => {
     mainWindow.minimize();
 });
 
-ipcMain.on('maximize-window', () => {
+ipcMain.on('maximize-window',
+ () => {
     if (mainWindow.isMaximized()) {
         mainWindow.unmaximize();
     } else {

@@ -40,6 +40,15 @@ contextBridge.exposeInMainWorld('modalAPI', {
    */
   getSearchSuggestions: (query) => ipcRenderer.invoke('get-search-suggestions', query),
 
+  /**
+   * Tells the main process to open the DevTools for the main window.
+   */
+  openMainDevTools: () => ipcRenderer.send('open-main-devtools'),
+
+  /**
+   * Closes all open modal dialogs and their DevTools.
+   */
+  resetAllModals: () => ipcRenderer.send('reset-all-modals'),
 
   unloadTab: (tabId) => ipcRenderer.send('unload-tab', tabId),
 

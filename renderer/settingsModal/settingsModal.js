@@ -14,6 +14,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const downloadUpdateBtn = document.getElementById('download-update-btn');
     const installRelaunchBtn = document.getElementById('install-relaunch-btn');
     const downloadProgressContainer = document.getElementById('download-progress-container');
+    // --- KEY CHANGE: Dev section elements ---
+    const openMainDevToolsBtn = document.getElementById('open-main-devtools-btn');
+    const devOpenOnStartupCheckbox = document.getElementById('dev-open-on-startup-checkbox');
+    const devDebugModalsCheckbox = document.getElementById('dev-debug-modals-checkbox');
+    const resetAllModalsBtn = document.getElementById('reset-all-modals-btn');
 
     // --- Load Initial Settings ---
     const settings = await window.modalAPI.getSettings();
@@ -35,6 +40,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         newTabUrlInput.value = currentNewUrl;
         newTabUrlInput.classList.remove('hidden');
     }
+
+    // --- KEY CHANGE: Load initial dev settings ---
+    devOpenOnStartupCheckbox.checked = !!settings.dev_openDevToolsOnStartup;
+    devDebugModalsCheckbox.checked = !!settings.dev_debugModals;
+    
+    resetAllModalsBtn.addEventListener('click', () => {
+        window.modalAPI.resetAllModals();
+    });
 
     // --- Setting Change Listeners ---
     // Theme
@@ -63,6 +76,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             window.modalAPI.setSetting('newTabUrl', event.target.value);
         }
     });
+
+    // --- KEY CHANGE: Add listeners for dev settings ---
+    openMainDevToolsBtn.addEventListener('click', () => {
+        window.modalAPI.openMainDevTools();
+    });
+
+    devOpenOnStartupCheckbox.addEventListener('change', (event) => {
+        window.modalAPI.setSetting('dev_openDevToolsOnStartup', event.target.checked);
+    });
+
+    devDebugModalsCheckbox.addEventListener('change', (event) => {
+        window.modalAPI.setSetting('dev_debugModals', event.target.checked);
+    });
+
 
     // --- Update Logic ---
     const resetUpdateUI = () => {

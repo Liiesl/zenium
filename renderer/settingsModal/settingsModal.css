@@ -91,7 +91,8 @@
     margin-top: 15px;
 }
 
-.theme-options label {
+.theme-options label,
+.setting-item label.checkbox-label { /* --- KEY CHANGE: Shared style for labels --- */
     margin-right: 20px;
     display: inline-flex;
     align-items: center;
@@ -101,10 +102,13 @@
 .hidden {
     display: none;
 }
-/* --- Updates Page Styles --- */
+
+/* --- Updates & Dev Page Styles --- */
 #check-update-btn,
 #download-update-btn,
-#install-relaunch-btn {
+#install-relaunch-btn,
+#open-main-devtools-btn,
+#reset-all-modals-btn { /* --- KEY CHANGE: Add new button ID --- */
     padding: 8px 15px;
     border: 1px solid var(--border-color);
     background-color: var(--input-background-color);
@@ -112,11 +116,14 @@
     border-radius: 5px;
     cursor: pointer;
     font-size: 14px;
+    margin-top: 10px; /* Added margin for spacing */
 }
 
 #check-update-btn:hover,
 #download-update-btn:hover,
-#install-relaunch-btn:hover {
+#install-relaunch-btn:hover,
+#open-main-devtools-btn:hover, 
+#reset-all-modals-btn:hover { /* --- KEY CHANGE: Add new button ID --- */
     background-color: var(--hover-color);
 }
 
