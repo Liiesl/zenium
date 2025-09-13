@@ -1,0 +1,81 @@
+# .github/workflows/build.yml
+
+name: Build and Release Windows Application
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      # Step 1: Check out your repository's code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: NEW - Change application name and product name for alpha releases
+      - name: Change application name to alpha version
+        # This step only runs for tags that include '-alpha'
+        if: contains(github.ref_name, '-alpha')
+        run: |
+          $packageJsonPath = "./package.json"
+          $packageJson = Get-Content $packageJsonPath -Raw | ConvertFrom-Json
+          
+          # Modify the root name property
+          $originalName = $packageJson.name
+          $packageJson.name = "$originalName-alpha"
+          echo "Changing package name from '$originalName' to '$($packageJson.name)'"
+
+          # Modify the productName for electron-builder
+          $originalProductName = $packageJson.build.productName
+          $packageJson.build.productName = "$originalProductName-alpha"
+          echo "Changing product name from '$originalProductName' to '$($packageJson.build.productName)'"
+          
+          # Convert back to JSON and write back to the file
+          $packageJson | ConvertTo-Json -Depth 10 | Set-Content $packageJsonPath
+        shell: pwsh
+
+      # Step 3: Verify that the package.json version matches the Git tag
+      - name: Verify package.json version matches tag
+        run: |
+          $packageVersion = (Get-Content ./package.json | ConvertFrom-Json).version
+          echo "Version in package.json: $packageVersion"
+
+          $gitTag = "${{ github.ref_name }}"
+          echo "Git tag: $gitTag"
+          
+          $expectedTag = "v$packageVersion"
+
+          if ($gitTag -ne $expectedTag) {
+            echo "Error: Git tag '$gitTag' does not match package.json version '$expectedTag'."
+            exit 1
+          } else {
+            echo "Version check passed. Proceeding with the build."
+          }
+        shell: pwsh
+
+      # Step 4: Set up Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Step 5: Install npm dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Step 6: Rebuild native dependencies for Electron
+      - name: Rebuild native dependencies
+        run: npm run rebuild
+
+      # Step 7: Build and release application
+      - name: Build and release application
+        run: npm run dist -- --publish always
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
