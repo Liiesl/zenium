@@ -112,6 +112,14 @@ class ViewManager {
 
         this.createLoadingView(tabId);
         
+        // --- FIX: Intercept new window requests (e.g., target="_blank") ---
+        view.webContents.setWindowOpenHandler(({ url }) => {
+            // Instruct the renderer to create a new tab with the specified URL
+            this.mainWindow.webContents.send('create-tab-with-url', url);
+            // Prevent the default action (opening a new window)
+            return { action: 'deny' };
+        });
+        
         const restoreHistory = async () => {
             if (view.webContents.isDestroyed()) return;
 
@@ -187,6 +195,34 @@ class ViewManager {
                     webContents.openDevTools({ mode: 'right' });
                 }
             }
+
+            if (input.control) {
+                let zoomChanged = false;
+
+                // Zoom In: Handles Ctrl+= and Ctrl++ (with Shift)
+                if (input.key === '+' || input.key === '=') {
+                    const currentZoom = view.webContents.getZoomFactor();
+                    view.webContents.setZoomFactor(currentZoom + 0.1);
+                    zoomChanged = true;
+                }
+               // Zoom Out: Handles Ctrl+-
+                if (input.key === '-') {
+                    const currentZoom = view.webContents.getZoomFactor();
+                    view.webContents.setZoomFactor(currentZoom - 0.1);
+                    zoomChanged = true;
+                }
+
+                // Reset Zoom: Handles Ctrl+0
+                if (input.key === '0') {
+                    view.webContents.setZoomFactor(1.0);
+                    zoomChanged = true;
+                }
+
+                if (zoomChanged) {
+                    // Prevent the main process from also handling the zoom event, which would zoom the entire UI
+                    event.preventDefault();
+                }
+            }
         });
 
         view.webContents.on('page-title-updated', (event, title) => {
@@ -202,6 +238,19 @@ class ViewManager {
         view.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
             console.error(`[ViewManager] Page failed to load: ${validatedURL}`);
             console.error(`[ViewManager] Error [${errorCode}]: ${errorDescription}`);
+        });
+
+        // --- NEW: Handle HTML5 fullscreen API requests ---
+        view.webContents.on('enter-html-full-screen', () => {
+            if (this.mainWindow) {
+                this.mainWindow.setFullScreen(true);
+            }
+        });
+
+        view.webContents.on('leave-html-full-screen', () => {
+            if (this.mainWindow) {
+                this.mainWindow.setFullScreen(false);
+            }
         });
 
         const sendUrlUpdate = () => {
@@ -378,20 +427,30 @@ class ViewManager {
         if (!view || !this.mainWindow) return;
 
         const { width, height } = this.mainWindow.getContentBounds();
-        const currentBounds = view.getBounds();
         
-        const isTitlebarExpanded = currentBounds.y > 10;
-        const y = isTitlebarExpanded ? 40 : 10;
-        const newHeight = isTitlebarExpanded ? height - 50 : height - 20;
-        const RESIZE_HANDLE_WIDTH = 10;
+        // --- FIX: Check if the main window is in fullscreen mode ---
+        if (this.mainWindow.isFullScreen()) {
+            // If so, make the view cover the entire window and remove border radius
+            view.setBorderRadius(0);
+            view.setBounds({ x: 0, y: 0, width: width, height: height });
+        } else {
+            // Otherwise, restore the normal bounds and border radius
+            view.setBorderRadius(20);
 
-        const newBounds = {
-            x: this.sidebarWidth + this.VIEW_PADDING + RESIZE_HANDLE_WIDTH,
-            y: y,
-            width: width - this.sidebarWidth - (this.VIEW_PADDING * 2) - RESIZE_HANDLE_WIDTH,
-            height: newHeight
-        };
-        view.setBounds(newBounds);
+            const currentBounds = view.getBounds();
+            const isTitlebarExpanded = currentBounds.y > 10;
+            const y = isTitlebarExpanded ? 40 : 10;
+            const newHeight = isTitlebarExpanded ? height - 50 : height - 20;
+            const RESIZE_HANDLE_WIDTH = 10;
+
+            const newBounds = {
+                x: this.sidebarWidth + this.VIEW_PADDING + RESIZE_HANDLE_WIDTH,
+                y: y,
+                width: width - this.sidebarWidth - (this.VIEW_PADDING * 2) - RESIZE_HANDLE_WIDTH,
+                height: newHeight
+            };
+            view.setBounds(newBounds);
+        }
 
         if (this.isLoading[this.activeTabId]) {
             this.showLoadingOverlay(this.activeTabId);

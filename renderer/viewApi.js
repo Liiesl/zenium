@@ -22,6 +22,8 @@ export const viewApi = {
   onFaviconUpdated: (callback) => window.electronAPI.onFaviconUpdated(callback),
   // --- FIX: Add the new listener ---
   onTabRestored: (callback) => window.electronAPI.onTabRestored(callback),
+  // --- FIX: Add a listener for link-based tab creation ---
+  onCreateTabWithUrl: (callback) => window.electronAPI.onCreateTabWithUrl(callback),
   onCreateUnloadedTab: (callback) => window.electronAPI.onCreateUnloadedTab(callback),
   onTabUnloaded: (callback) => window.electronAPI.onTabUnloaded(callback),
   onTabLoaded: (callback) => window.electronAPI.onTabLoaded(callback),

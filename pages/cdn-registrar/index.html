@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZNTP CDN Registrar</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>ZNTP CDN Registrar</h1>
+        <p>Manage local websites accessible via the <code>zntp://</code> protocol. For example, if you register 'how.zum' to port 3000, you can then visit <code>zntp://how.zum</code> in your browser.</p>
+
+        <div class="card">
+            <h2>Register a New Site</h2>
+            <form id="add-site-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="site-name">Site Name</label>
+                        <input type="text" id="site-name" placeholder="my-react-app" required pattern="[a-z0-9-]+" title="Use lowercase letters, numbers, and hyphens.">
+                    </div>
+                    <div class="form-group domain-group">
+                        <label for="site-domain">Domain</label>
+                        <select id="site-domain">
+                            <option value="zum">.zum</option>
+                            <option value="znm">.znm</option>
+                            <option value="zem">.zem</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="site-port">Local Port</label>
+                        <input type="number" id="site-port" placeholder="3000" required min="1" max="65535">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pm2-name">PM2 Process Name</label>
+                        <input type="text" id="pm2-name" placeholder="my-api">
+                    </div>
+                    <div class="form-group">
+                        <label for="pm2-script">PM2 Script Location</label>
+                        <input type="text" id="pm2-script" placeholder="/path/to/your/server.js">
+                    </div>
+                </div>
+                <button type="submit">Register Site</button>
+            </form>
+            <p id="form-error" class="error-message"></p>
+        </div>
+
+        <div class="card">
+            <h2>Registered Sites</h2>
+            <div id="sites-list">
+                <p>No sites registered yet.</p>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

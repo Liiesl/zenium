@@ -1,5 +1,5 @@
 // main.js
-const { app, BrowserWindow, ipcMain, screen, net, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, net, dialog, protocol } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const { ViewManager } = require('./viewManager.js');
@@ -9,6 +9,23 @@ const { SessionManager } = require('./sessionManager.js');
 const { HistoryManager } = require('./historyManager.js');
 const { attachKeyBlocker } = require('./keyblocker.js');
 const { registerZeniumProtocol } = require('./protocol.js');
+const { ZntpManager } = require('./zntpManager.js');
+const { registerZntpProtocol } = require('./zntp-protocol.js');
+
+// --- FIX: Register the 'zntp' protocol as privileged ---
+// This must be done before the 'ready' event. It allows the Fetch API
+// in the renderer to make requests to zntp:// URLs.
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'zntp',
+    privileges: {
+      standard: true,      // Treat it like http, helps with URL parsing
+      secure: true,        // Treat it as a secure protocol
+      corsEnabled: true,   // Allow Cross-Origin Resource Sharing
+      supportFetchAPI: true // **Crucially, allow it to be used with fetch()**
+    }
+  }
+]);
 
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = false;
@@ -21,6 +38,7 @@ let viewManager;
 let settingsManager;
 let historyManager;
 let sessionManager;
+let zntpManager; // <-- Declared here
 let pollMouseInterval = null;
 let isQuitting = false;
 let updateReadyToInstall = false;
@@ -38,16 +56,14 @@ function createWindow() {
   });
 
   historyManager = new HistoryManager();
-  // --- KEY CHANGE: Instantiate SettingsManager before ModalManager ---
   settingsManager = new SettingsManager();
-  // --- KEY CHANGE: Pass settingsManager to ModalManager constructor ---
+  // ZntpManager is now created before this function is called.
   modalManager = new ModalManager(mainWindow, settingsManager);
   viewManager = new ViewManager(mainWindow, historyManager, modalManager);
   sessionManager = new SessionManager();
   
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
   
-  // --- KEY CHANGE: Open DevTools on startup based on settings ---
   const settings = settingsManager.settings;
   if (settings.dev_openDevToolsOnStartup) {
     mainWindow.webContents.openDevTools({ mode: 'undocked' });
@@ -56,27 +72,20 @@ function createWindow() {
 
   mainWindow.on('resize', () => viewManager.updateActiveViewBounds());
 
-  // --- KEY CHANGE: The shutdown logic is simplified to auto-install on quit ---
   mainWindow.on('close', async (event) => {
-    // If we're already in the process of quitting, do nothing to prevent loops.
     if (isQuittingForUpdate || isQuitting) {
       return;
     }
     
-    // Prevent the window from closing immediately.
     event.preventDefault();
 
-    // If an update has been downloaded and deferred, install it now.
     if (updateReadyToInstall) {
       console.log('[main.js] An update is ready. Proceeding with quit and install.');
-      // Set the flag to prevent other quit logic from running.
       isQuittingForUpdate = true;
-      // The updater will handle shutting down the app. No need to save the session.
       autoUpdater.quitAndInstall();
-      return; // Stop here.
+      return; 
     }
     
-    // --- Standard shutdown procedure if no update is pending ---
     isQuitting = true;
 
     try {
@@ -91,6 +100,16 @@ function createWindow() {
     }
   });
   
+  mainWindow.on('enter-full-screen', () => {
+    mainWindow.webContents.send('enter-fullscreen');
+    viewManager.updateActiveViewBounds();
+  });
+
+  mainWindow.on('leave-full-screen', () => {
+    mainWindow.webContents.send('leave-fullscreen');
+    viewManager.updateActiveViewBounds();
+  });
+
   const startPolling = () => {
     if (pollMouseInterval) return;  
 
@@ -141,8 +160,16 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // --- FIX: Instantiate managers before registering protocols that use them ---
+  zntpManager = new ZntpManager();
+
+  // Now register the protocols with the necessary managers
   registerZeniumProtocol();
+  registerZntpProtocol(zntpManager); // This will now receive a valid manager instance
+
+  // Create the window, which initializes window-dependent managers
   createWindow();
+  
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
@@ -151,6 +178,36 @@ app.whenReady().then(() => {
 
   mainWindow.webContents.on('did-finish-load', () => {
     attachKeyBlocker(mainWindow.webContents);
+
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.control) {
+        const view = viewManager.getActiveView();
+        if (!view) return;
+
+        let zoomChanged = false;
+
+        if (input.key === '=' || input.key === '+') {
+          const currentZoom = view.webContents.getZoomFactor();
+          view.webContents.setZoomFactor(currentZoom + 0.1);
+          zoomChanged = true;
+        }
+
+        if (input.key === '-' || input.key === '_') {
+          const currentZoom = view.webContents.getZoomFactor();
+          view.webContents.setZoomFactor(currentZoom - 0.1);
+          zoomChanged = true;
+        }
+
+        if (input.key === '0') {
+          view.webContents.setZoomFactor(1.0);
+          zoomChanged = true;
+        }
+
+        if (zoomChanged) {
+          event.preventDefault();
+        }
+      }
+    });
   });
 
   ipcMain.on('renderer-ready', () => {

@@ -163,12 +163,13 @@ export class Sidebar {
         return tabElement;
     }
 
-    createTab() {
+    // --- FIX: Modified to accept an optional URL for creating tabs from links ---
+    createTab(initialUrl) {
         const tabId = `tab-${Date.now()}`;
         const tabElement = this._createTabElement(tabId);
         this.tabsList.appendChild(tabElement);
         
-        let url = this.settings?.newTabUrl || 'zenium://newtab';
+        let url = initialUrl || this.settings?.newTabUrl || 'zenium://newtab';
         
         if (url === 'zenium://newtab') {
             url = `zenium://newtab?tabId=${tabId}`;

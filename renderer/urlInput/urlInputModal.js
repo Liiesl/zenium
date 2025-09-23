@@ -11,29 +11,35 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeSuggestionIndex = -1;
 
     function navigateTo(query) {
-        if (!query) return;
+        console.log(`[navigateTo] Received query: "${query}"`); // <-- LOG 1: Raw input
+        if (!query) {
+            console.warn('[navigateTo] Query is empty. Aborting.');
+            return;
+        }
         let url;
-        
-        // --- MODIFIED: Added a check for '://' to recognize any protocol, including zenium:// ---
-        const isLikelyUrl = (query.includes('.') && !query.includes(' ')) || 
-                            query.startsWith('localhost') || 
-                            query.startsWith('127.0.0.1') ||
-                            query.includes('://');
 
-        if (isLikelyUrl) {
-            // --- FIXED: If it's a custom protocol or already has a protocol, use the query as-is. ---
-            if (query.includes('://')) {
-                url = query;
-            } else {
-                 // Prepend https:// for other likely URLs that are missing a protocol.
-                const isLocal = query.startsWith('localhost') || query.startsWith('127.0.0.1');
-                url = (isLocal ? 'http://' : 'https://') + query;
-            }
-        } else {
-            // Fallback to Google search for anything else.
+        // Check 1: Does the query include a protocol handler '://'?
+        if (query.includes('://')) {
+            console.log('[navigateTo] Condition met: query includes "://". Treating as a full URL.'); // <-- LOG 2: Condition matched
+            url = query;
+        }
+        // Check 2: Does it look like a local address?
+        else if (query.startsWith('localhost') || query.startsWith('127.0.0.1')) {
+            console.log('[navigateTo] Condition met: query looks like a local address.'); // <-- LOG 2: Condition matched
+            url = 'http://' + query;
+        }
+        // Check 3: Does it look like a typical domain name (e.g., 'google.com')?
+        else if (query.includes('.') && !query.includes(' ')) {
+            console.log('[navigateTo] Condition met: query looks like a domain name.'); // <-- LOG 2: Condition matched
+            url = 'https://' + query;
+        }
+        // Fallback: If none of the above, treat it as a search query.
+        else {
+            console.log('[navigateTo] Fallback: Treating as a search query.'); // <-- LOG 2: Condition matched
             url = `https://www.google.com/search?hl=en&gl=us&q=${encodeURIComponent(query)}`;
         }
 
+        console.log(`[navigateTo] Final URL to be sent for navigation: "${url}"`); // <-- LOG 3: Final URL
         window.modalAPI.sendAction({ type: 'navigate-to-url', url: url, tabId: activeTabId });
         window.modalAPI.close();
     }
@@ -71,8 +77,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     input.addEventListener('keydown', (e) => {
         const suggestions = suggestionsContainer.querySelectorAll('.suggestion-item');
-        if (suggestions.length === 0) return;
 
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const query = (activeSuggestionIndex > -1 && suggestions[activeSuggestionIndex])
+                ? suggestions[activeSuggestionIndex].textContent
+                : e.target.value.trim();
+            navigateTo(query);
+            return; 
+        }
+
+        if (suggestions.length === 0 && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) return;
+        
         if (e.key === 'ArrowDown') {
             e.preventDefault();
             if (activeSuggestionIndex < suggestions.length - 1) {
@@ -85,12 +101,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 activeSuggestionIndex--;
                 updateActiveSuggestion(suggestions);
             }
-        } else if (e.key === 'Enter') {
-            e.preventDefault();
-            const query = (activeSuggestionIndex > -1 && suggestions[activeSuggestionIndex])
-                ? suggestions[activeSuggestionIndex].textContent
-                : e.target.value.trim();
-            navigateTo(query);
         } else if (e.key === 'Escape') {
             window.modalAPI.close();
         }

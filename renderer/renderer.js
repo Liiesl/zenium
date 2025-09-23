@@ -83,6 +83,12 @@ class App {
             this.sidebar.createRestoredTab(data);
         });
 
+        // --- FIX: Listen for requests from main process to create a tab from a link ---
+        viewApi.onCreateTabWithUrl((url) => {
+            console.log(`[Renderer] Received request to create tab for URL: ${url}`);
+            this.sidebar.createTab(url);
+        });
+
         // --- KEY CHANGE: Listen for unloaded tabs during session restore ---
         viewApi.onCreateUnloadedTab((data) => {
             console.log('[Renderer] Received create-unloaded-tab event:', data);
@@ -113,8 +119,16 @@ class App {
                     break;
             }
         });
-    }
 
+        // --- NEW: Add listeners for fullscreen state changes ---
+        window.electronAPI.onEnterFullscreen(() => {
+            document.body.classList.add('fullscreen-active');
+        });
+
+        window.electronAPI.onLeaveFullscreen(() => {
+            document.body.classList.remove('fullscreen-active');
+        });
+    }
     // ... rest of the file is unchanged ...
     addResizeFunctionality(handle, sidebar, contentContainer) {
         let isResizing = false;

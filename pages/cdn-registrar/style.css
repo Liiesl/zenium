@@ -1,0 +1,202 @@
+/* Basic Reset & Font */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f4f4f9;
+    color: #333;
+    margin: 0;
+    padding: 2em;
+}
+
+.container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+h1 {
+    color: #1a1a1a;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 0.5em;
+    margin-bottom: 1em;
+}
+
+p {
+    line-height: 1.6;
+}
+
+code {
+    background-color: #e0e0e0;
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+    font-family: "Courier New", Courier, monospace;
+}
+
+/* Card Style */
+.card {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 1.5em;
+    margin-bottom: 2em;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+h2 {
+    margin-top: 0;
+    color: #333;
+}
+
+/* Form Styles */
+#add-site-form .form-row {
+    display: flex;
+    gap: 1em;
+    align-items: flex-end;
+    margin-bottom: 1em;
+}
+
+#add-site-form .form-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+#add-site-form .domain-group {
+    flex: 0.5;
+}
+
+
+#add-site-form label {
+    font-weight: 600;
+    margin-bottom: 0.5em;
+    font-size: 0.9em;
+}
+
+#add-site-form input, #add-site-form select {
+    padding: 0.8em;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+#add-site-form input:focus, #add-site-form select:focus {
+    outline: none;
+    border-color: #007aff;
+    box-shadow: 0 0 0 2px rgba(0,122,255,0.2);
+}
+
+button {
+    background-color: #007aff;
+    color: white;
+    border: none;
+    padding: 0.8em 1.5em;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+.error-message {
+    color: #d93025;
+    margin-top: 1em;
+    font-weight: 500;
+    min-height: 1.2em;
+}
+
+/* Sites List Table */
+#sites-list table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#sites-list th, #sites-list td {
+    text-align: left;
+    padding: 0.8em;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+#sites-list th {
+    font-weight: 600;
+}
+
+#sites-list a {
+    color: #007aff;
+    text-decoration: none;
+}
+#sites-list a:hover {
+    text-decoration: underline;
+}
+
+.edit-btn {
+    background-color: #5ac8fa; /* A light blue */
+}
+
+.edit-btn:hover {
+    background-color: #007aff;
+}
+
+.save-btn {
+    background-color: #34c759; /* Green, same as start */
+}
+
+.save-btn:hover {
+    background-color: #2ca049;
+}
+
+.cancel-btn {
+    background-color: #8e8e93; /* A neutral gray */
+}
+
+.delete-btn {
+    background-color: #d93025;
+}
+
+.delete-btn:hover {
+    background-color: #b0261c;
+}
+
+.start-btn {
+    background-color: #34c759;
+}
+
+.start-btn:hover {
+    background-color: #2ca049;
+}
+
+.stop-btn {
+    background-color: #ff9500;
+}
+
+.stop-btn:hover {
+    background-color: #d97e00;
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.status-indicator.online {
+    background-color: #34c759;
+}
+
+.status-indicator.offline {
+    background-color: #d93025;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.5em;
+}
+
+/* Styles for inline editing inputs */
+.edit-name, .edit-domain {
+    padding: 4px 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+}

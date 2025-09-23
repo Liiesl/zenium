@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   rendererReady: () => ipcRenderer.send('renderer-ready'),
   onInitialTab: (callback) => ipcRenderer.on('create-initial-tab', (_event) => callback()),
   onCreateTab: (callback) => ipcRenderer.on('create-tab', (_event, value) => callback(value)),
+  // --- FIX: Listen for main process requests to create a tab for a specific URL ---
+  onCreateTabWithUrl: (callback) => ipcRenderer.on('create-tab-with-url', (_event, url) => callback(url)),
   onSwitchTab: (callback) => ipcRenderer.on('switch-tab', (_event, value) => callback(value)),
   onTabRestored: (callback) => ipcRenderer.on('tab-restored', (_event, value) => callback(value)),
 
@@ -61,4 +63,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onUpdateNotAvailable: (callback) => ipcRenderer.on('update-not-available', (_event) => callback()),
   onUpdateDownloadProgress: (callback) => ipcRenderer.on('update-download-progress', (_event, value) => callback(value)),
   onUpdateDownloadComplete: (callback) => ipcRenderer.on('update-download-complete', (_event) => callback()),
+  // --- NEW: Listen for fullscreen events from the main process ---
+  onEnterFullscreen: (callback) => ipcRenderer.on('enter-fullscreen', (_event) => callback()),
+  onLeaveFullscreen: (callback) => ipcRenderer.on('leave-fullscreen', (_event) => callback()),
 });

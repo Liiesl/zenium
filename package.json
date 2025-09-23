@@ -24,7 +24,8 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.2.0",
-    "electron-updater": "^6.3.0"
+    "electron-updater": "^6.3.0",
+    "pm2": "^6.0.13"
   },
   "build": {
     "appId": "com.github.liiesl.zenium",
